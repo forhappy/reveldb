@@ -26,11 +26,11 @@
   #include <stdbool.h>
   #define TRUE true
   #define FALSE false
-  typedef	bool bool_t;
+  typedef   bool bool_t;
 #else
   typedef int bool_t;
-  #define TRUE	(1)
-  #define FALSE	(!TRUE)
+  #define TRUE  (1)
+  #define FALSE (!TRUE)
 #endif
 
 /*

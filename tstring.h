@@ -31,16 +31,16 @@ extern "C" {
 #endif
 
 #define min(x, y) ({\
-		__typeof(x) _min1 = (x);\
-		__typeof(y) _min2 = (y);\
-		(void) (&_min1 == &_min2);\
-		_min1 < _min2 ? _min1 : _min2;})
+        __typeof(x) _min1 = (x);\
+        __typeof(y) _min2 = (y);\
+        (void) (&_min1 == &_min2);\
+        _min1 < _min2 ? _min1 : _min2;})
 
 #define max(x, y) ({\
-		__typeof(x) _max1 = (x);\
-		__typeof(y) _max2 = (y);\
-		(void) (&_max1 == &_max2);\
-		_max1 > _max2 ? _max1 : _max2;})
+        __typeof(x) _max1 = (x);\
+        __typeof(y) _max2 = (y);\
+        (void) (&_max1 == &_max2);\
+        _max1 > _max2 ? _max1 : _max2;})
 
 typedef struct _tstring_t tstring_t;
 

@@ -48,76 +48,76 @@
 
 -----------------------------------------------------------------------
 static inline struct page * rb_search_page_cache(struct inode * inode,
-						 unsigned long offset)
+                         unsigned long offset)
 {
-	struct rb_node * n = inode->i_rb_page_cache.rb_node;
-	struct page * page;
+    struct rb_node * n = inode->i_rb_page_cache.rb_node;
+    struct page * page;
 
-	while (n)
-	{
-		page = rb_entry(n, struct page, rb_page_cache);
+    while (n)
+    {
+        page = rb_entry(n, struct page, rb_page_cache);
 
-		if (offset < page->offset)
-			n = n->rb_left;
-		else if (offset > page->offset)
-			n = n->rb_right;
-		else
-			return page;
-	}
-	return NULL;
+        if (offset < page->offset)
+            n = n->rb_left;
+        else if (offset > page->offset)
+            n = n->rb_right;
+        else
+            return page;
+    }
+    return NULL;
 }
 
 static inline struct page * __rb_insert_page_cache(struct inode * inode,
-						   unsigned long offset,
-						   struct rb_node * node)
+                           unsigned long offset,
+                           struct rb_node * node)
 {
-	struct rb_node ** p = &inode->i_rb_page_cache.rb_node;
-	struct rb_node * parent = NULL;
-	struct page * page;
+    struct rb_node ** p = &inode->i_rb_page_cache.rb_node;
+    struct rb_node * parent = NULL;
+    struct page * page;
 
-	while (*p)
-	{
-		parent = *p;
-		page = rb_entry(parent, struct page, rb_page_cache);
+    while (*p)
+    {
+        parent = *p;
+        page = rb_entry(parent, struct page, rb_page_cache);
 
-		if (offset < page->offset)
-			p = &(*p)->rb_left;
-		else if (offset > page->offset)
-			p = &(*p)->rb_right;
-		else
-			return page;
-	}
+        if (offset < page->offset)
+            p = &(*p)->rb_left;
+        else if (offset > page->offset)
+            p = &(*p)->rb_right;
+        else
+            return page;
+    }
 
-	rb_link_node(node, parent, p);
+    rb_link_node(node, parent, p);
 
-	return NULL;
+    return NULL;
 }
 
 static inline struct page * rb_insert_page_cache(struct inode * inode,
-						 unsigned long offset,
-						 struct rb_node * node)
+                         unsigned long offset,
+                         struct rb_node * node)
 {
-	struct page * ret;
-	if ((ret = __rb_insert_page_cache(inode, offset, node)))
-		goto out;
-	rb_insert_color(node, &inode->i_rb_page_cache);
+    struct page * ret;
+    if ((ret = __rb_insert_page_cache(inode, offset, node)))
+        goto out;
+    rb_insert_color(node, &inode->i_rb_page_cache);
  out:
-	return ret;
+    return ret;
 }
 -----------------------------------------------------------------------
 */
 
-#ifndef	_LINUX_RBTREE_H
-#define	_LINUX_RBTREE_H
+#ifndef _LINUX_RBTREE_H
+#define _LINUX_RBTREE_H
 
 #if defined(container_of)
   #undef container_of
-  #define container_of(ptr, type, member) ({			\
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+  #define container_of(ptr, type, member) ({            \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)( (char *)__mptr - offsetof(type,member) );})
 #else
-  #define container_of(ptr, type, member) ({			\
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+  #define container_of(ptr, type, member) ({            \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)( (char *)__mptr - offsetof(type,member) );})
 #endif
 
@@ -137,17 +137,17 @@ static inline struct page * rb_insert_page_cache(struct inode * inode,
 
 struct rb_node
 {
-	unsigned long  rb_parent_color;
-#define	RB_RED		0
-#define	RB_BLACK	1
-	struct rb_node *rb_right;
-	struct rb_node *rb_left;
+    unsigned long  rb_parent_color;
+#define RB_RED      0
+#define RB_BLACK    1
+    struct rb_node *rb_right;
+    struct rb_node *rb_left;
 } __attribute__((aligned(sizeof(long))));
     /* The alignment might seem pointless, but allegedly CRIS needs it */
 
 struct rb_root
 {
-	struct rb_node *rb_node;
+    struct rb_node *rb_node;
 };
 
 
@@ -160,26 +160,26 @@ struct rb_root
 
 static inline void rb_set_parent(struct rb_node *rb, struct rb_node *p)
 {
-	rb->rb_parent_color = (rb->rb_parent_color & 3) | (unsigned long)p;
+    rb->rb_parent_color = (rb->rb_parent_color & 3) | (unsigned long)p;
 }
 static inline void rb_set_color(struct rb_node *rb, int color)
 {
-	rb->rb_parent_color = (rb->rb_parent_color & ~1) | color;
+    rb->rb_parent_color = (rb->rb_parent_color & ~1) | color;
 }
 
-#define RB_ROOT	(struct rb_root) { NULL, }
-#define	rb_entry(ptr, type, member) container_of(ptr, type, member)
+#define RB_ROOT (struct rb_root) { NULL, }
+#define rb_entry(ptr, type, member) container_of(ptr, type, member)
 
-#define RB_EMPTY_ROOT(root)	((root)->rb_node == NULL)
-#define RB_EMPTY_NODE(node)	(rb_parent(node) == node)
-#define RB_CLEAR_NODE(node)	(rb_set_parent(node, node))
+#define RB_EMPTY_ROOT(root) ((root)->rb_node == NULL)
+#define RB_EMPTY_NODE(node) (rb_parent(node) == node)
+#define RB_CLEAR_NODE(node) (rb_set_parent(node, node))
 
 static inline void rb_init_node(struct rb_node *rb)
 {
-	rb->rb_parent_color = 0;
-	rb->rb_right = NULL;
-	rb->rb_left = NULL;
-	RB_CLEAR_NODE(rb);
+    rb->rb_parent_color = 0;
+    rb->rb_right = NULL;
+    rb->rb_left = NULL;
+    RB_CLEAR_NODE(rb);
 }
 
 extern void rb_insert_color(struct rb_node *, struct rb_root *);
@@ -188,10 +188,10 @@ extern void rb_erase(struct rb_node *, struct rb_root *);
 typedef void (*rb_augment_f)(struct rb_node *node, void *data);
 
 extern void rb_augment_insert(struct rb_node *node,
-			      rb_augment_f func, void *data);
+                  rb_augment_f func, void *data);
 extern struct rb_node *rb_augment_erase_begin(struct rb_node *node);
 extern void rb_augment_erase_end(struct rb_node *node,
-				 rb_augment_f func, void *data);
+                 rb_augment_f func, void *data);
 
 /* Find logical next and previous nodes in a tree */
 extern struct rb_node *rb_next(const struct rb_node *);
@@ -201,16 +201,16 @@ extern struct rb_node *rb_last(const struct rb_root *);
 
 /* Fast replacement of a single node without remove/rebalance/add/rebalance */
 extern void rb_replace_node(struct rb_node *victim, struct rb_node *new, 
-			    struct rb_root *root);
+                struct rb_root *root);
 
 static inline void rb_link_node(struct rb_node * node, struct rb_node * parent,
-				struct rb_node ** rb_link)
+                struct rb_node ** rb_link)
 {
-	node->rb_parent_color = (unsigned long )parent;
-	node->rb_left = node->rb_right = NULL;
+    node->rb_parent_color = (unsigned long )parent;
+    node->rb_left = node->rb_right = NULL;
 
-	*rb_link = node;
+    *rb_link = node;
 }
 
-#endif	/* _LINUX_RBTREE_H */
+#endif  /* _LINUX_RBTREE_H */
 
