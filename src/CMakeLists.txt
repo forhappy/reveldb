@@ -1,11 +1,11 @@
 AUX_SOURCE_DIRECTORY(nedmalloc NEDMALLOC)
 
 SET(REVELDB_SRC
-    ${NEDMALLOC}
     evhttpx/evhttpx.c
     evhttpx/evthr/evthr.c
     evhttpx/httpparser/http-parser.c
     main.c
+    reveldb.c
     cJSON.c
     config.c
     rbtree.c

@@ -14,16 +14,24 @@
  */
 #ifndef _REVELDB_H_
 #define _REVELDB_H_
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 #include <leveldb/c.h>
 
-typedef struct reveldb_config_s_ reveldb_config_t;
-typedef struct reveldb_instance_s_ reveldb_instance_t;
+#include "rbtree.h"
 
-struct reveldb_config_s_ {
+typedef struct xleveldb_config_s_ xleveldb_config_t;
+typedef struct xleveldb_instance_s_ xleveldb_instance_t;
+typedef struct reveldb_s_ reveldb_t;
+
+/* xleveldb_config_s_ is the leveldb specified configuration,
+ * I added "x" as the prefix on purpose to avoid the potential
+ * conflicts with leveldb.
+ * */
+struct xleveldb_config_s_ {
     char *dbname; /** default database name.*/
     unsigned int lru_cache_size; /** leveldb's lru cache size */
     bool create_if_missing; /** create database if it doesn't exist. */
@@ -40,7 +48,10 @@ struct reveldb_config_s_ {
     bool sync; /** set true to enable sync when write. */
 };
 
-struct reveldb_instance_s_ {
+/* xleveldb_instance_s_ indicates a leveldb instance. reveldb consists of
+ * more than one leveldb instance on design, and each instance can be
+ * connected from client.*/
+struct xleveldb_instance_s_ {
     /* leveldb instance. */
     leveldb_t *db;
     leveldb_cache_t *cache;
@@ -56,6 +67,22 @@ struct reveldb_instance_s_ {
     leveldb_writeoptions_t *woptions;
 
     char *err;
+
+    xleveldb_config_t *config;
 };
+
+/* reveldb_s_ is a red-black tree structure containing all leveldb instance. */
+struct reveldb_s_ {
+    char *dbname;
+
+    xleveldb_instance_t *instance;
+
+    struct rb_node node;
+};
+
+extern reveldb_t * reveldb_init(const char *dbname);
+extern reveldb_t * reveldb_search_db(struct rb_root *root, const char *dbname);
+extern int reveldb_insert_db(struct rb_root *root, reveldb_t *db);
+extern void reveldb_free_db(reveldb_t *db);
 
 #endif // _REVELDB_H_
