@@ -17,33 +17,33 @@
 
 #include "evhttpx.h"
 
-static int                  _evhttpx_request_parser_start(http_parser_t * p);
-static int                  _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_headers(http_parser_t * p);
-static int                  _evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_fini(http_parser_t * p);
-static int                  _evhttpx_request_parser_chunk_new(http_parser_t * p);
-static int                  _evhttpx_request_parser_chunk_fini(http_parser_t * p);
-static int                  _evhttpx_request_parser_chunks_fini(http_parser_t * p);
-static int                  _evhttpx_request_parser_headers_start(http_parser_t * p);
+static int _evhttpx_request_parser_start(http_parser_t * p);
+static int _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len);
+static int _evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len);
+static int _evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t len);
+static int _evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t len);
+static int _evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t len);
+static int _evhttpx_request_parser_headers(http_parser_t * p);
+static int _evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len);
+static int _evhttpx_request_parser_fini(http_parser_t * p);
+static int _evhttpx_request_parser_chunk_new(http_parser_t * p);
+static int _evhttpx_request_parser_chunk_fini(http_parser_t * p);
+static int _evhttpx_request_parser_chunks_fini(http_parser_t * p);
+static int _evhttpx_request_parser_headers_start(http_parser_t * p);
 
-static void                 _evhttpx_connection_readcb(evbev_t * bev, void * arg);
+static void _evhttpx_connection_readcb(evbev_t * bev, void * arg);
 
 static evhttpx_connection_t * _evhttpx_connection_new(evhttpx_t * httpx, int sock);
 
-static evhttpx_uri_t        * _evhttpx_uri_new(void);
-static void                 _evhttpx_uri_free(evhttpx_uri_t * uri);
+static evhttpx_uri_t * _evhttpx_uri_new(void);
+static void _evhttpx_uri_free(evhttpx_uri_t * uri);
 
-static evhttpx_path_t       * _evhttpx_path_new(const char * data, size_t len);
-static void                 _evhttpx_path_free(evhttpx_path_t * path);
+static evhttpx_path_t * _evhttpx_path_new(const char * data, size_t len);
+static void _evhttpx_path_free(evhttpx_path_t * path);
 
-#define HOOK_AVAIL(var, hook_name)                 (var->hooks && var->hooks->hook_name)
-#define HOOK_FUNC(var, hook_name)                  (var->hooks->hook_name)
-#define HOOK_ARGS(var, hook_name)                  var->hooks->hook_name ## _arg
+#define HOOK_AVAIL(var, hook_name) (var->hooks && var->hooks->hook_name)
+#define HOOK_FUNC(var, hook_name) (var->hooks->hook_name)
+#define HOOK_ARGS(var, hook_name) var->hooks->hook_name ## _arg
 
 #define HOOK_REQUEST_RUN(request, hook_name, ...)  do {                                       \
         if (HOOK_AVAIL(request, hook_name)) {                                                 \
@@ -107,7 +107,8 @@ struct status_code {
 
 
 static int
-status_code_cmp(void * _a, void * _b) {
+status_code_cmp(void * _a, void * _b)
+{
     struct status_code * a = _a;
     struct status_code * b = _b;
 
@@ -127,7 +128,8 @@ RB_GENERATE(status_code_tree, status_code, entry, status_code_cmp)
 } while (0)
 
 static void
-status_code_init(void) {
+status_code_init(void)
+{
     if (scode_tree_initialized) {
         /* Already initialized. */
         return;
@@ -194,7 +196,8 @@ status_code_init(void) {
 }     /* status_code_init */
 
 const char *
-status_code_to_str(evhttpx_res code) {
+status_code_to_str(evhttpx_res code)
+{
     struct status_code   c;
     struct status_code * found;
 
@@ -244,7 +247,8 @@ static int             ssl_locks_initialized = 0;
 
 #ifdef NO_STRNLEN
 static size_t
-strnlen(const char * s, size_t maxlen) {
+strnlen(const char * s, size_t maxlen)
+{
     const char * e;
     size_t       n;
 
@@ -259,7 +263,8 @@ strnlen(const char * s, size_t maxlen) {
 
 #ifdef NO_STRNDUP
 static char *
-strndup(const char * s, size_t n) {
+strndup(const char * s, size_t n)
+{
     size_t len = strnlen(s, n);
     char * ret;
 
@@ -288,7 +293,8 @@ strndup(const char * s, size_t n) {
  * @return an unsigned integer hash of str
  */
 static inline unsigned int
-_evhttpx_quick_hash(const char * str) {
+_evhttpx_quick_hash(const char * str)
+{
     unsigned int h = 0;
 
     for (; *str; str++) {
@@ -307,7 +313,8 @@ _evhttpx_quick_hash(const char * str) {
  * @return 1 if HTTP/1.0, else 0
  */
 static inline int
-_evhttpx_is_http_10(const char major, const char minor) {
+_evhttpx_is_http_10(const char major, const char minor)
+{
     if (major >= 1 && minor <= 0) {
         return 1;
     }
@@ -324,7 +331,8 @@ _evhttpx_is_http_10(const char major, const char minor) {
  * @return 1 if HTTP/1.1, else 0
  */
 static inline int
-_evhttpx_is_http_11(const char major, const char minor) {
+_evhttpx_is_http_11(const char major, const char minor)
+{
     if (major >= 1 && minor >= 1) {
         return 1;
     }
@@ -342,7 +350,8 @@ _evhttpx_is_http_11(const char major, const char minor) {
  *         EVHTTPX_PROTO_INVALID
  */
 static inline evhttpx_proto
-_evhttpx_protocol(const char major, const char minor) {
+_evhttpx_protocol(const char major, const char minor)
+{
     if (_evhttpx_is_http_10(major, minor)) {
         return evhttpx_PROTO_10;
     }
@@ -363,7 +372,8 @@ _evhttpx_protocol(const char major, const char minor) {
  * @return EVHTTPX_RES_OK on success, otherwise something else.
  */
 static inline evhttpx_res
-_evhttpx_path_hook(evhttpx_request_t * request, evhttpx_path_t * path) {
+_evhttpx_path_hook(evhttpx_request_t * request, evhttpx_path_t * path)
+{
     HOOK_REQUEST_RUN(request, on_path, path);
 
     return EVHTTPX_RES_OK;
@@ -380,7 +390,8 @@ _evhttpx_path_hook(evhttpx_request_t * request, evhttpx_path_t * path) {
  * @return EVHTTPX_RES_OK on success, otherwise something else.
  */
 static inline evhttpx_res
-_evhttpx_header_hook(evhttpx_request_t * request, evhttpx_header_t * header) {
+_evhttpx_header_hook(evhttpx_request_t * request, evhttpx_header_t * header)
+{
     HOOK_REQUEST_RUN(request, on_header, header);
 
     return EVHTTPX_RES_OK;
@@ -396,7 +407,8 @@ _evhttpx_header_hook(evhttpx_request_t * request, evhttpx_header_t * header) {
  * @return EVHTTPX_RES_OK on success, otherwise something else.
  */
 static inline evhttpx_res
-_evhttpx_headers_hook(evhttpx_request_t * request, evhttpx_headers_t * headers) {
+_evhttpx_headers_hook(evhttpx_request_t * request, evhttpx_headers_t * headers)
+{
     HOOK_REQUEST_RUN(request, on_headers, headers);
 
     return EVHTTPX_RES_OK;
@@ -413,7 +425,8 @@ _evhttpx_headers_hook(evhttpx_request_t * request, evhttpx_headers_t * headers) 
  * @return EVHTTPX_RES_OK on success, otherwise something else.
  */
 static inline evhttpx_res
-_evhttpx_body_hook(evhttpx_request_t * request, evbuf_t * buf) {
+_evhttpx_body_hook(evhttpx_request_t * request, evbuf_t * buf)
+{
     HOOK_REQUEST_RUN(request, on_read, buf);
 
     return EVHTTPX_RES_OK;
@@ -428,35 +441,40 @@ _evhttpx_body_hook(evhttpx_request_t * request, evbuf_t * buf) {
  * @return EVHTTPX_RES_OK on success, otherwise treated as an error
  */
 static inline evhttpx_res
-_evhttpx_request_fini_hook(evhttpx_request_t * request) {
+_evhttpx_request_fini_hook(evhttpx_request_t * request)
+{
     HOOK_REQUEST_RUN_NARGS(request, on_request_fini);
 
     return EVHTTPX_RES_OK;
 }
 
 static inline evhttpx_res
-_evhttpx_chunk_new_hook(evhttpx_request_t * request, uint64_t len) {
+_evhttpx_chunk_new_hook(evhttpx_request_t * request, uint64_t len)
+{
     HOOK_REQUEST_RUN(request, on_new_chunk, len);
 
     return EVHTTPX_RES_OK;
 }
 
 static inline evhttpx_res
-_evhttpx_chunk_fini_hook(evhttpx_request_t * request) {
+_evhttpx_chunk_fini_hook(evhttpx_request_t * request)
+{
     HOOK_REQUEST_RUN_NARGS(request, on_chunk_fini);
 
     return EVHTTPX_RES_OK;
 }
 
 static inline evhttpx_res
-_evhttpx_chunks_fini_hook(evhttpx_request_t * request) {
+_evhttpx_chunks_fini_hook(evhttpx_request_t * request)
+{
     HOOK_REQUEST_RUN_NARGS(request, on_chunks_fini);
 
     return EVHTTPX_RES_OK;
 }
 
 static inline evhttpx_res
-_evhttpx_headers_start_hook(evhttpx_request_t * request) {
+_evhttpx_headers_start_hook(evhttpx_request_t * request)
+{
     HOOK_REQUEST_RUN_NARGS(request, on_headers_start);
 
     return EVHTTPX_RES_OK;
@@ -471,7 +489,8 @@ _evhttpx_headers_start_hook(evhttpx_request_t * request) {
  * @return EVHTTPX_RES_OK on success, but pretty much ignored in any case.
  */
 static inline evhttpx_res
-_evhttpx_connection_fini_hook(evhttpx_connection_t * connection) {
+_evhttpx_connection_fini_hook(evhttpx_connection_t * connection)
+{
     if (connection->hooks && connection->hooks->on_connection_fini) {
         return (connection->hooks->on_connection_fini)(connection,
                                                        connection->hooks->on_connection_fini_arg);
@@ -481,14 +500,16 @@ _evhttpx_connection_fini_hook(evhttpx_connection_t * connection) {
 }
 
 static inline evhttpx_res
-_evhttpx_hostname_hook(evhttpx_request_t * r, const char * hostname) {
+_evhttpx_hostname_hook(evhttpx_request_t * r, const char * hostname)
+{
     HOOK_REQUEST_RUN(r, on_hostname, hostname);
 
     return EVHTTPX_RES_OK;
 }
 
 static inline evhttpx_res
-_evhttpx_connection_write_hook(evhttpx_connection_t * connection) {
+_evhttpx_connection_write_hook(evhttpx_connection_t * connection)
+{
     if (connection->hooks && connection->hooks->on_write) {
         return (connection->hooks->on_write)(connection,
                                              connection->hooks->on_write_arg);
@@ -508,7 +529,8 @@ _evhttpx_connection_write_hook(evhttpx_connection_t * connection) {
  * @return
  */
 static int
-_evhttpx_glob_match(const char * pattern, const char * string) {
+_evhttpx_glob_match(const char * pattern, const char * string)
+{
     size_t pat_len;
     size_t str_len;
 
@@ -572,7 +594,8 @@ static evhttpx_callback_t *
 _evhttpx_callback_find(evhttpx_callbacks_t * cbs,
                      const char        * path,
                      unsigned int      * start_offset,
-                     unsigned int      * end_offset) {
+                     unsigned int      * end_offset)
+{
     evhttpx_callback_t * callback;
 
     if (cbs == NULL) {
@@ -610,7 +633,8 @@ _evhttpx_callback_find(evhttpx_callbacks_t * cbs,
  * @return evhttpx_request_t structure on success, otherwise NULL
  */
 static evhttpx_request_t *
-_evhttpx_request_new(evhttpx_connection_t * c) {
+_evhttpx_request_new(evhttpx_connection_t * c)
+{
     evhttpx_request_t * req;
 
     if (!(req = calloc(sizeof(evhttpx_request_t), 1))) {
@@ -637,7 +661,8 @@ _evhttpx_request_new(evhttpx_connection_t * c) {
  * @param request the request structure
  */
 static void
-_evhttpx_request_free(evhttpx_request_t * request) {
+_evhttpx_request_free(evhttpx_request_t * request)
+{
     if (request == NULL) {
         return;
     }
@@ -667,7 +692,8 @@ _evhttpx_request_free(evhttpx_request_t * request) {
  * @return evhttpx_uri_t
  */
 static evhttpx_uri_t *
-_evhttpx_uri_new(void) {
+_evhttpx_uri_new(void)
+{
     evhttpx_uri_t * uri;
 
     if (!(uri = calloc(sizeof(evhttpx_uri_t), 1))) {
@@ -683,7 +709,8 @@ _evhttpx_uri_new(void) {
  * @param uri evhttpx_uri_t
  */
 static void
-_evhttpx_uri_free(evhttpx_uri_t * uri) {
+_evhttpx_uri_free(evhttpx_uri_t * uri)
+{
     if (uri == NULL) {
         return;
     }
@@ -712,7 +739,8 @@ _evhttpx_uri_free(evhttpx_uri_t * uri) {
  * @return evhttpx_request_t * on success, NULL on error.
  */
 static evhttpx_path_t *
-_evhttpx_path_new(const char * data, size_t len) {
+_evhttpx_path_new(const char * data, size_t len)
+{
     evhttpx_path_t * req_path;
     const char   * data_end = (const char *)(data + len);
     char         * path     = NULL;
@@ -799,7 +827,8 @@ _evhttpx_path_new(const char * data, size_t len) {
 }     /* _evhttpx_path_new */
 
 static void
-_evhttpx_path_free(evhttpx_path_t * path) {
+_evhttpx_path_free(evhttpx_path_t * path)
+{
     if (path == NULL) {
         return;
     }
@@ -815,7 +844,8 @@ _evhttpx_path_free(evhttpx_path_t * path) {
 }
 
 static int
-_evhttpx_request_parser_start(http_parser_t * p) {
+_evhttpx_request_parser_start(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if (c->request) {
@@ -834,7 +864,8 @@ _evhttpx_request_parser_start(http_parser_t * p) {
 }
 
 static int
-_evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len) {
+_evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len)
+{
     evhttpx_connection_t * c   = http_parser_get_userdata(p);
     evhttpx_uri_t        * uri = c->request->uri;
 
@@ -850,7 +881,8 @@ _evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len) {
 }
 
 static int
-_evhttpx_request_parser_headers_start(http_parser_t * p) {
+_evhttpx_request_parser_headers_start(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_headers_start_hook(c->request)) != EVHTTPX_RES_OK) {
@@ -861,7 +893,8 @@ _evhttpx_request_parser_headers_start(http_parser_t * p) {
 }
 
 static int
-_evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t len) {
+_evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t len)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
     char               * key_s;     /* = strndup(data, len); */
     evhttpx_header_t     * hdr;
@@ -880,7 +913,8 @@ _evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t 
 }
 
 static int
-_evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t len) {
+_evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t len)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
     char               * val_s;
     evhttpx_header_t     * header;
@@ -904,7 +938,8 @@ _evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t 
 }
 
 static inline evhttpx_t *
-_evhttpx_request_find_vhost(evhttpx_t * evhttpx, const char * name) {
+_evhttpx_request_find_vhost(evhttpx_t * evhttpx, const char * name)
+{
     evhttpx_t       * evhttpx_vhost;
     evhttpx_alias_t * evhttpx_alias;
 
@@ -932,7 +967,8 @@ _evhttpx_request_find_vhost(evhttpx_t * evhttpx, const char * name) {
 }
 
 static inline int
-_evhttpx_request_set_callbacks(evhttpx_request_t * request) {
+_evhttpx_request_set_callbacks(evhttpx_request_t * request)
+{
     evhttpx_t            * evhttpx;
     evhttpx_connection_t * conn;
     evhttpx_uri_t        * uri;
@@ -1023,7 +1059,8 @@ _evhttpx_request_set_callbacks(evhttpx_request_t * request) {
 } /* _evhttpx_request_set_callbacks */
 
 static int
-_evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t len) {
+_evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t len)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
     evhttpx_t            * evhttpx;
     evhttpx_t            * evhttpx_vhost;
@@ -1075,7 +1112,8 @@ _evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t le
 } /* _evhttpx_request_parser_hostname */
 
 static int
-_evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len) {
+_evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
     evhttpx_uri_t        * uri;
     evhttpx_path_t       * path;
@@ -1111,7 +1149,8 @@ _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len) {
 }     /* _evhttpx_request_parser_path */
 
 static int
-_evhttpx_request_parser_headers(http_parser_t * p) {
+_evhttpx_request_parser_headers(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     /* XXX proto should be set with htparsers on_hdrs_begin hook */
@@ -1136,7 +1175,8 @@ _evhttpx_request_parser_headers(http_parser_t * p) {
 }
 
 static int
-_evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len) {
+_evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len)
+{
     evhttpx_connection_t * c   = http_parser_get_userdata(p);
     evbuf_t            * buf;
     int                  res = 0;
@@ -1167,7 +1207,8 @@ _evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len) {
 }
 
 static int
-_evhttpx_request_parser_chunk_new(http_parser_t * p) {
+_evhttpx_request_parser_chunk_new(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_chunk_new_hook(c->request,
@@ -1179,7 +1220,8 @@ _evhttpx_request_parser_chunk_new(http_parser_t * p) {
 }
 
 static int
-_evhttpx_request_parser_chunk_fini(http_parser_t * p) {
+_evhttpx_request_parser_chunk_fini(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_chunk_fini_hook(c->request)) != EVHTTPX_RES_OK) {
@@ -1190,7 +1232,8 @@ _evhttpx_request_parser_chunk_fini(http_parser_t * p) {
 }
 
 static int
-_evhttpx_request_parser_chunks_fini(http_parser_t * p) {
+_evhttpx_request_parser_chunks_fini(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_chunks_fini_hook(c->request)) != EVHTTPX_RES_OK) {
@@ -1211,7 +1254,8 @@ _evhttpx_request_parser_chunks_fini(http_parser_t * p) {
  * @return 1 if evhttpx can use the body as the query arguments, 0 otherwise.
  */
 static int
-_evhttpx_should_parse_query_body(evhttpx_request_t * req) {
+_evhttpx_should_parse_query_body(evhttpx_request_t * req)
+{
     const char * content_type;
 
     if (req == NULL) {
@@ -1231,7 +1275,7 @@ _evhttpx_should_parse_query_body(evhttpx_request_t * req) {
         return 0;
     }
 
-    content_type = evhttpx_kv_find(req->headers_in, "content-type");
+    content_type = evhttpx_kv_find(req->headers_in, "Content-Type");
 
     if (content_type == NULL) {
         return 0;
@@ -1245,7 +1289,8 @@ _evhttpx_should_parse_query_body(evhttpx_request_t * req) {
 }
 
 static int
-_evhttpx_request_parser_fini(http_parser_t * p) {
+_evhttpx_request_parser_fini(http_parser_t * p)
+{
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     /* check to see if we should use the body of the request as the query
@@ -1284,7 +1329,8 @@ _evhttpx_request_parser_fini(http_parser_t * p) {
 }
 
 static int
-_evhttpx_create_headers(evhttpx_header_t * header, void * arg) {
+_evhttpx_create_headers(evhttpx_header_t * header, void * arg)
+{
     evbuf_t * buf = arg;
 
     evbuffer_add(buf, header->key, header->klen);
@@ -1295,7 +1341,8 @@ _evhttpx_create_headers(evhttpx_header_t * header, void * arg) {
 }
 
 static evbuf_t *
-_evhttpx_create_reply(evhttpx_request_t * request, evhttpx_res code) {
+_evhttpx_create_reply(evhttpx_request_t * request, evhttpx_res code)
+{
     evbuf_t    * buf          = evbuffer_new();
     const char * content_type = evhttpx_header_find(request->headers_out, "Content-Type");
 
@@ -1354,7 +1401,7 @@ check_proto:
             if (request->keepalive == 1) {
                 /* protocol is HTTP/1.0 and clients wants to keep established */
                 evhttpx_headers_add_header(request->headers_out,
-                                         evhttpx_header_new("Connection", "keep-alive", 0, 0));
+                        evhttpx_header_new("Connection", "keep-alive", 0, 0));
             }
             break;
         default:
@@ -1382,7 +1429,8 @@ check_proto:
 }     /* _evhttpx_create_reply */
 
 static void
-_evhttpx_connection_resumecb(int fd, short events, void * arg) {
+_evhttpx_connection_resumecb(int fd, short events, void * arg)
+{
     evhttpx_connection_t * c = arg;
 
     if (c->request) {
@@ -1393,7 +1441,8 @@ _evhttpx_connection_resumecb(int fd, short events, void * arg) {
 }
 
 static void
-_evhttpx_connection_readcb(evbev_t * bev, void * arg) {
+_evhttpx_connection_readcb(evbev_t * bev, void * arg)
+{
     evhttpx_connection_t * c = arg;
     void               * buf;
     size_t               nread;
@@ -1428,7 +1477,8 @@ _evhttpx_connection_readcb(evbev_t * bev, void * arg) {
         switch (c->request->status) {
             case EVHTTPX_RES_DATA_TOO_LONG:
                 if (c->request->hooks && c->request->hooks->on_error) {
-                    (*c->request->hooks->on_error)(c->request, -1, c->request->hooks->on_error_arg);
+                    (*c->request->hooks->on_error)(c->request, -1,
+                            c->request->hooks->on_error_arg);
                 }
                 evhttpx_connection_free(c);
                 return;
@@ -1450,7 +1500,8 @@ _evhttpx_connection_readcb(evbev_t * bev, void * arg) {
 } /* _evhttpx_connection_readcb */
 
 static void
-_evhttpx_connection_writecb(evbev_t * bev, void * arg) {
+_evhttpx_connection_writecb(evbev_t * bev, void * arg)
+{
     evhttpx_connection_t * c = arg;
 
     if (c->request == NULL) {
@@ -1505,7 +1556,8 @@ _evhttpx_connection_writecb(evbev_t * bev, void * arg) {
 } /* _evhttpx_connection_writecb */
 
 static void
-_evhttpx_connection_eventcb(evbev_t * bev, short events, void * arg) {
+_evhttpx_connection_eventcb(evbev_t * bev, short events, void * arg)
+{
     evhttpx_connection_t * c;
 
     if ((events & BEV_EVENT_CONNECTED)) {
@@ -1534,7 +1586,8 @@ _evhttpx_connection_eventcb(evbev_t * bev, short events, void * arg) {
 }
 
 static int
-_evhttpx_run_pre_accept(evhttpx_t * httpx, evhttpx_connection_t * conn) {
+_evhttpx_run_pre_accept(evhttpx_t * httpx, evhttpx_connection_t * conn)
+{
     void    * args;
     evhttpx_res res;
 
@@ -1553,7 +1606,8 @@ _evhttpx_run_pre_accept(evhttpx_t * httpx, evhttpx_connection_t * conn) {
 }
 
 static int
-_evhttpx_connection_accept(evbase_t * evbase, evhttpx_connection_t * connection) {
+_evhttpx_connection_accept(evbase_t * evbase, evhttpx_connection_t * connection)
+{
     struct timeval * c_recv_timeo;
     struct timeval * c_send_timeo;
 
@@ -1616,12 +1670,14 @@ end:
 }     /* _evhttpx_connection_accept */
 
 static void
-_evhttpx_default_request_cb(evhttpx_request_t * request, void * arg) {
+_evhttpx_default_request_cb(evhttpx_request_t * request, void * arg)
+{
     evhttpx_send_reply(request, EVHTTPX_RES_NOTFOUND);
 }
 
 static evhttpx_connection_t *
-_evhttpx_connection_new(evhttpx_t * httpx, int sock) {
+_evhttpx_connection_new(evhttpx_t * httpx, int sock)
+{
     evhttpx_connection_t * connection;
 
     if (!(connection = calloc(sizeof(evhttpx_connection_t), 1))) {
@@ -1643,14 +1699,16 @@ _evhttpx_connection_new(evhttpx_t * httpx, int sock) {
 #ifdef LIBEVENT_HAS_SHUTDOWN
 #ifndef EVHTTPX_DISABLE_SSL
 static void
-_evhttpx_shutdown_eventcb(evbev_t * bev, short events, void * arg) {
+_evhttpx_shutdown_eventcb(evbev_t * bev, short events, void * arg)
+{
 }
 
 #endif
 #endif
 
 static int
-_evhttpx_run_post_accept(evhttpx_t * httpx, evhttpx_connection_t * connection) {
+_evhttpx_run_post_accept(evhttpx_t * httpx, evhttpx_connection_t * connection)
+{
     void    * args;
     evhttpx_res res;
 
@@ -1670,7 +1728,8 @@ _evhttpx_run_post_accept(evhttpx_t * httpx, evhttpx_connection_t * connection) {
 
 #ifndef EVHTTPX_DISABLE_EVTHR
 static void
-_evhttpx_run_in_thread(evthr_t * thr, void * arg, void * shared) {
+_evhttpx_run_in_thread(evthr_t * thr, void * arg, void * shared)
+{
     evhttpx_t            * httpx        = shared;
     evhttpx_connection_t * connection = arg;
 
@@ -1693,7 +1752,8 @@ _evhttpx_run_in_thread(evthr_t * thr, void * arg, void * shared) {
 #endif
 
 static void
-_evhttpx_accept_cb(evserv_t * serv, int fd, struct sockaddr * s, int sl, void * arg) {
+_evhttpx_accept_cb(evserv_t * serv, int fd, struct sockaddr * s, int sl, void * arg)
+{
     evhttpx_t            * httpx = arg;
     evhttpx_connection_t * connection;
 
@@ -1730,12 +1790,14 @@ _evhttpx_accept_cb(evserv_t * serv, int fd, struct sockaddr * s, int sl, void * 
 #ifndef EVHTTPX_DISABLE_SSL
 #ifndef EVHTTPX_DISABLE_EVTHR
 static unsigned long
-_evhttpx_ssl_get_thread_id(void) {
+_evhttpx_ssl_get_thread_id(void)
+{
     return (unsigned long)pthread_self();
 }
 
 static void
-_evhttpx_ssl_thread_lock(int mode, int type, const char * file, int line) {
+_evhttpx_ssl_thread_lock(int mode, int type, const char * file, int line)
+{
     if (type < ssl_num_locks) {
         if (mode & CRYPTO_LOCK) {
             pthread_mutex_lock(&(ssl_locks[type]));
@@ -1747,7 +1809,8 @@ _evhttpx_ssl_thread_lock(int mode, int type, const char * file, int line) {
 
 #endif
 static void
-_evhttpx_ssl_delete_scache_ent(evhttpx_ssl_ctx_t * ctx, evhttpx_ssl_sess_t * sess) {
+_evhttpx_ssl_delete_scache_ent(evhttpx_ssl_ctx_t * ctx, evhttpx_ssl_sess_t * sess)
+{
     evhttpx_t         * httpx;
     evhttpx_ssl_cfg_t * cfg;
     unsigned char   * sid;
@@ -1765,7 +1828,8 @@ _evhttpx_ssl_delete_scache_ent(evhttpx_ssl_ctx_t * ctx, evhttpx_ssl_sess_t * ses
 }
 
 static int
-_evhttpx_ssl_add_scache_ent(evhttpx_ssl_t * ssl, evhttpx_ssl_sess_t * sess) {
+_evhttpx_ssl_add_scache_ent(evhttpx_ssl_t * ssl, evhttpx_ssl_sess_t * sess)
+{
     evhttpx_connection_t * connection;
     evhttpx_ssl_cfg_t    * cfg;
     unsigned char      * sid;
@@ -1787,7 +1851,9 @@ _evhttpx_ssl_add_scache_ent(evhttpx_ssl_t * ssl, evhttpx_ssl_sess_t * sess) {
 }
 
 static evhttpx_ssl_sess_t *
-_evhttpx_ssl_get_scache_ent(evhttpx_ssl_t * ssl, unsigned char * sid, int sid_len, int * copy) {
+_evhttpx_ssl_get_scache_ent(evhttpx_ssl_t * ssl,
+        unsigned char * sid, int sid_len, int * copy)
+{
     evhttpx_connection_t * connection;
     evhttpx_ssl_cfg_t    * cfg;
     evhttpx_ssl_sess_t   * sess;
@@ -1806,7 +1872,8 @@ _evhttpx_ssl_get_scache_ent(evhttpx_ssl_t * ssl, unsigned char * sid, int sid_le
 }
 
 static int
-_evhttpx_ssl_servername(evhttpx_ssl_t * ssl, int * unused, void * arg) {
+_evhttpx_ssl_servername(evhttpx_ssl_t * ssl, int * unused, void * arg)
+{
     const char         * sname;
     evhttpx_connection_t * connection;
     evhttpx_t            * evhttpx;
@@ -1850,7 +1917,8 @@ _evhttpx_ssl_servername(evhttpx_ssl_t * ssl, int * unused, void * arg) {
  */
 
 http_method_e
-evhttpx_request_get_method(evhttpx_request_t * r) {
+evhttpx_request_get_method(evhttpx_request_t * r)
+{
     return http_parser_get_method(r->conn->parser);
 }
 
@@ -1860,7 +1928,8 @@ evhttpx_request_get_method(evhttpx_request_t * r) {
  * @param c a evhttpx_connection_t * structure
  */
 void
-evhttpx_connection_pause(evhttpx_connection_t * c) {
+evhttpx_connection_pause(evhttpx_connection_t * c)
+{
     if ((bufferevent_get_enabled(c->bev) & EV_READ)) {
         bufferevent_disable(c->bev, EV_READ);
     }
@@ -1872,7 +1941,8 @@ evhttpx_connection_pause(evhttpx_connection_t * c) {
  * @param c
  */
 void
-evhttpx_connection_resume(evhttpx_connection_t * c) {
+evhttpx_connection_resume(evhttpx_connection_t * c)
+{
     if (!(bufferevent_get_enabled(c->bev) & EV_READ)) {
         bufferevent_enable(c->bev, EV_READ);
         event_active(c->resume_ev, EV_WRITE, 1);
@@ -1887,7 +1957,8 @@ evhttpx_connection_resume(evhttpx_connection_t * c) {
  * @param request
  */
 void
-evhttpx_request_pause(evhttpx_request_t * request) {
+evhttpx_request_pause(evhttpx_request_t * request)
+{
     request->status = EVHTTPX_RES_PAUSE;
     evhttpx_connection_pause(request->conn);
 }
@@ -1900,12 +1971,14 @@ evhttpx_request_pause(evhttpx_request_t * request) {
  * @param request
  */
 void
-evhttpx_request_resume(evhttpx_request_t * request) {
+evhttpx_request_resume(evhttpx_request_t * request)
+{
     evhttpx_connection_resume(request->conn);
 }
 
 evhttpx_header_t *
-evhttpx_header_key_add(evhttpx_headers_t * headers, const char * key, char kalloc) {
+evhttpx_header_key_add(evhttpx_headers_t * headers, const char * key, char kalloc)
+{
     evhttpx_header_t * header;
 
     if (!(header = evhttpx_header_new(key, NULL, kalloc, 0))) {
@@ -1918,7 +1991,8 @@ evhttpx_header_key_add(evhttpx_headers_t * headers, const char * key, char kallo
 }
 
 evhttpx_header_t *
-evhttpx_header_val_add(evhttpx_headers_t * headers, const char * val, char valloc) {
+evhttpx_header_val_add(evhttpx_headers_t * headers, const char * val, char valloc)
+{
     evhttpx_header_t * header = TAILQ_LAST(headers, evhttpx_headers_s);
 
     if (header == NULL) {
@@ -1941,7 +2015,8 @@ evhttpx_header_val_add(evhttpx_headers_t * headers, const char * val, char vallo
 }
 
 evhttpx_kvs_t *
-evhttpx_kvs_new(void) {
+evhttpx_kvs_new(void)
+{
     evhttpx_kvs_t * kvs = malloc(sizeof(evhttpx_kvs_t));
 
     TAILQ_INIT(kvs);
@@ -1949,7 +2024,8 @@ evhttpx_kvs_new(void) {
 }
 
 evhttpx_kv_t *
-evhttpx_kv_new(const char * key, const char * val, char kalloc, char valloc) {
+evhttpx_kv_new(const char * key, const char * val, char kalloc, char valloc)
+{
     evhttpx_kv_t * kv;
 
     if (!(kv = malloc(sizeof(evhttpx_kv_t)))) {
@@ -1993,7 +2069,8 @@ evhttpx_kv_new(const char * key, const char * val, char kalloc, char valloc) {
 }     /* evhttpx_kv_new */
 
 void
-evhttpx_kv_free(evhttpx_kv_t * kv) {
+evhttpx_kv_free(evhttpx_kv_t * kv)
+{
     if (kv == NULL) {
         return;
     }
@@ -2010,7 +2087,8 @@ evhttpx_kv_free(evhttpx_kv_t * kv) {
 }
 
 void
-evhttpx_kv_rm_and_free(evhttpx_kvs_t * kvs, evhttpx_kv_t * kv) {
+evhttpx_kv_rm_and_free(evhttpx_kvs_t * kvs, evhttpx_kv_t * kv)
+{
     if (kvs == NULL || kv == NULL) {
         return;
     }
@@ -2021,7 +2099,8 @@ evhttpx_kv_rm_and_free(evhttpx_kvs_t * kvs, evhttpx_kv_t * kv) {
 }
 
 void
-evhttpx_kvs_free(evhttpx_kvs_t * kvs) {
+evhttpx_kvs_free(evhttpx_kvs_t * kvs)
+{
     evhttpx_kv_t * kv;
     evhttpx_kv_t * save;
 
@@ -2041,7 +2120,8 @@ evhttpx_kvs_free(evhttpx_kvs_t * kvs) {
 }
 
 int
-evhttpx_kvs_for_each(evhttpx_kvs_t * kvs, evhttpx_kvs_iterator cb, void * arg) {
+evhttpx_kvs_for_each(evhttpx_kvs_t * kvs, evhttpx_kvs_iterator cb, void * arg)
+{
     evhttpx_kv_t * kv;
 
     if (kvs == NULL || cb == NULL) {
@@ -2060,7 +2140,8 @@ evhttpx_kvs_for_each(evhttpx_kvs_t * kvs, evhttpx_kvs_iterator cb, void * arg) {
 }
 
 const char *
-evhttpx_kv_find(evhttpx_kvs_t * kvs, const char * key) {
+evhttpx_kv_find(evhttpx_kvs_t * kvs, const char * key)
+{
     evhttpx_kv_t * kv;
 
     if (kvs == NULL || key == NULL) {
@@ -2077,7 +2158,8 @@ evhttpx_kv_find(evhttpx_kvs_t * kvs, const char * key) {
 }
 
 evhttpx_kv_t *
-evhttpx_kvs_find_kv(evhttpx_kvs_t * kvs, const char * key) {
+evhttpx_kvs_find_kv(evhttpx_kvs_t * kvs, const char * key)
+{
     evhttpx_kv_t * kv;
 
     if (kvs == NULL || key == NULL) {
@@ -2094,7 +2176,8 @@ evhttpx_kvs_find_kv(evhttpx_kvs_t * kvs, const char * key) {
 }
 
 void
-evhttpx_kvs_add_kv(evhttpx_kvs_t * kvs, evhttpx_kv_t * kv) {
+evhttpx_kvs_add_kv(evhttpx_kvs_t * kvs, evhttpx_kv_t * kv)
+{
     if (kvs == NULL || kv == NULL) {
         return;
     }
@@ -2116,7 +2199,8 @@ typedef enum {
 } query_parser_state;
 
 static inline int
-evhttpx_is_hex_query_char(unsigned char ch) {
+evhttpx_is_hex_query_char(unsigned char ch)
+{
     switch (ch) {
         case 'a': case 'A':
         case 'b': case 'B':
@@ -2147,7 +2231,10 @@ enum unscape_state {
 };
 
 int
-evhttpx_unescape_string(unsigned char ** out, unsigned char * str, size_t str_len) {
+evhttpx_unescape_string(unsigned char ** out,
+        unsigned char * str,
+        size_t str_len)
+{
     unsigned char    * optr;
     unsigned char    * sptr;
     unsigned char      d;
@@ -2222,14 +2309,14 @@ evhttpx_unescape_string(unsigned char ** out, unsigned char * str, size_t str_le
 }         /* evhttpx_unescape_string */
 
 evhttpx_query_t *
-evhttpx_parse_query(const char * query, size_t len) {
+evhttpx_parse_query(const char * query, size_t len)
+{
     evhttpx_query_t    * query_args;
     query_parser_state state   = s_query_start;
     char             * key_buf = NULL;
     char             * val_buf = NULL;
     int                key_idx;
     int                val_idx;
-    int                res;
     unsigned char      ch;
     size_t             i;
 
@@ -2248,11 +2335,9 @@ evhttpx_parse_query(const char * query, size_t len) {
     val_idx = 0;
 
     for (i = 0; i < len; i++) {
-        res = 0;
         ch  = query[i];
 
         if (key_idx >= len || val_idx >= len) {
-            res = -1;
             goto error;
         }
 
@@ -2286,7 +2371,6 @@ evhttpx_parse_query(const char * query, size_t len) {
                         state = s_query_question_mark;
                         break;
                     default:
-                        res   = -1;
                         goto error;
                 }
                 break;
@@ -2312,7 +2396,6 @@ query_key:
                     /* not hex, so we treat as a normal key */
                     if ((key_idx + 2) >= len) {
                         /* we need to insert \%<ch>, but not enough space */
-                        res = -1;
                         goto error;
                     }
 
@@ -2330,7 +2413,6 @@ query_key:
                 break;
             case s_query_key_hex_2:
                 if (!evhttpx_is_hex_query_char(ch)) {
-                    res = -1;
                     goto error;
                 }
 
@@ -2343,7 +2425,8 @@ query_key:
                 switch (ch) {
                     case ';':
                     case '&':
-                        evhttpx_kvs_add_kv(query_args, evhttpx_kv_new(key_buf, val_buf, 1, 1));
+                        evhttpx_kvs_add_kv(query_args,
+                                evhttpx_kv_new(key_buf, val_buf, 1, 1));
 
                         memset(key_buf, 0, len);
                         memset(val_buf, 0, len);
@@ -2372,7 +2455,6 @@ query_key:
                     /* not really a hex val */
                     if ((val_idx + 2) >= len) {
                         /* we need to insert \%<ch>, but not enough space */
-                        res = -1;
                         goto error;
                     }
 
@@ -2392,7 +2474,6 @@ query_key:
                 break;
             case s_query_val_hex_2:
                 if (!evhttpx_is_hex_query_char(ch)) {
-                    res = -1;
                     goto error;
                 }
 
@@ -2403,7 +2484,6 @@ query_key:
                 break;
             default:
                 /* bad state */
-                res   = -1;
                 goto error;
         }       /* switch */
     }
@@ -2424,7 +2504,8 @@ error:
 }     /* evhttpx_parse_query */
 
 void
-evhttpx_send_reply_start(evhttpx_request_t * request, evhttpx_res code) {
+evhttpx_send_reply_start(evhttpx_request_t * request, evhttpx_res code)
+{
     evhttpx_connection_t * c;
     evbuf_t            * reply_buf;
 
@@ -2440,7 +2521,8 @@ evhttpx_send_reply_start(evhttpx_request_t * request, evhttpx_res code) {
 }
 
 void
-evhttpx_send_reply_body(evhttpx_request_t * request, evbuf_t * buf) {
+evhttpx_send_reply_body(evhttpx_request_t * request, evbuf_t * buf)
+{
     evhttpx_connection_t * c;
 
     c = request->conn;
@@ -2449,15 +2531,18 @@ evhttpx_send_reply_body(evhttpx_request_t * request, evbuf_t * buf) {
 }
 
 void
-evhttpx_send_reply_end(evhttpx_request_t * request) {
+evhttpx_send_reply_end(evhttpx_request_t * request)
+{
     request->finished = 1;
 
     _evhttpx_connection_writecb(evhttpx_request_get_bev(request),
-                              evhttpx_request_get_connection(request));
+            evhttpx_request_get_connection(request));
 }
 
 void
-evhttpx_send_reply(evhttpx_request_t * request, evhttpx_res code) {
+evhttpx_send_reply(evhttpx_request_t * request,
+        evhttpx_res code)
+{
     evhttpx_connection_t * c;
     evbuf_t            * reply_buf;
 
@@ -2474,7 +2559,9 @@ evhttpx_send_reply(evhttpx_request_t * request, evhttpx_res code) {
 }
 
 int
-evhttpx_response_needs_body(const evhttpx_res code, const http_method_e method) {
+evhttpx_response_needs_body(const evhttpx_res code,
+        const http_method_e method)
+{
     return code != EVHTTPX_RES_NOCONTENT &&
            code != EVHTTPX_RES_NOTMOD &&
            (code < 100 || code >= 200) &&
@@ -2482,11 +2569,14 @@ evhttpx_response_needs_body(const evhttpx_res code, const http_method_e method) 
 }
 
 void
-evhttpx_send_reply_chunk_start(evhttpx_request_t * request, evhttpx_res code) {
+evhttpx_send_reply_chunk_start(evhttpx_request_t * request,
+        evhttpx_res code)
+{
     evhttpx_header_t * content_len;
 
     if (evhttpx_response_needs_body(code, request->method)) {
-        content_len = evhttpx_headers_find_header(request->headers_out, "Content-Length");
+        content_len = evhttpx_headers_find_header(request->headers_out,
+                "Content-Length");
 
         switch (request->proto) {
             case evhttpx_PROTO_11:
@@ -2508,7 +2598,7 @@ evhttpx_send_reply_chunk_start(evhttpx_request_t * request, evhttpx_res code) {
                 evhttpx_kv_rm_and_free(request->headers_out, content_len);
 
                 evhttpx_headers_add_header(request->headers_out,
-                                         evhttpx_header_new("Content-Length", "0", 0, 0));
+                        evhttpx_header_new("Content-Length", "0", 0, 0));
 
                 request->chunked = 1;
                 break;
@@ -2522,7 +2612,7 @@ evhttpx_send_reply_chunk_start(evhttpx_request_t * request, evhttpx_res code) {
 
     if (request->chunked == 1) {
         evhttpx_headers_add_header(request->headers_out,
-                                 evhttpx_header_new("Transfer-Encoding", "chunked", 0, 0));
+                evhttpx_header_new("Transfer-Encoding", "chunked", 0, 0));
 
         /*
          * if data already exists on the output buffer, we automagically convert
@@ -2551,7 +2641,8 @@ end:
 } /* evhttpx_send_reply_chunk_start */
 
 void
-evhttpx_send_reply_chunk(evhttpx_request_t * request, evbuf_t * buf) {
+evhttpx_send_reply_chunk(evhttpx_request_t * request, evbuf_t * buf)
+{
     evbuf_t * output;
 
     output = bufferevent_get_output(request->conn->bev);
@@ -2571,7 +2662,8 @@ evhttpx_send_reply_chunk(evhttpx_request_t * request, evbuf_t * buf) {
 }
 
 void
-evhttpx_send_reply_chunk_end(evhttpx_request_t * request) {
+evhttpx_send_reply_chunk_end(evhttpx_request_t * request)
+{
     if (request->chunked) {
         evbuffer_add(bufferevent_get_output(evhttpx_request_get_bev(request)),
                      "0\r\n\r\n", 5);
@@ -2581,18 +2673,24 @@ evhttpx_send_reply_chunk_end(evhttpx_request_t * request) {
 }
 
 void
-evhttpx_unbind_socket(evhttpx_t * httpx) {
+evhttpx_unbind_socket(evhttpx_t * httpx)
+{
     evconnlistener_free(httpx->server);
     httpx->server = NULL;
 }
 
 int
-evhttpx_bind_sockaddr(evhttpx_t * httpx, struct sockaddr * sa, size_t sin_len, int backlog) {
+evhttpx_bind_sockaddr(evhttpx_t * httpx,
+        struct sockaddr * sa,
+        size_t sin_len,
+        int backlog)
+{
     signal(SIGPIPE, SIG_IGN);
 
-    httpx->server = evconnlistener_new_bind(httpx->evbase, _evhttpx_accept_cb, (void *)httpx,
-                                          LEV_OPT_THREADSAFE | LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-                                          backlog, sa, sin_len);
+    httpx->server = evconnlistener_new_bind(httpx->evbase,
+            _evhttpx_accept_cb, (void *)httpx,
+            LEV_OPT_THREADSAFE | LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+            backlog, sa, sin_len);
 
 #ifdef USE_DEFER_ACCEPT
     {
@@ -2601,8 +2699,10 @@ evhttpx_bind_sockaddr(evhttpx_t * httpx, struct sockaddr * sa, size_t sin_len, i
 
         sock = evconnlistener_get_fd(httpx->server);
 
-        setsockopt(sock, IPPROTO_TCP, TCP_DEFER_ACCEPT, &one, (ev_socklen_t)sizeof(one));
-        setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &one, (ev_socklen_t)sizeof(one));
+        setsockopt(sock, IPPROTO_TCP, TCP_DEFER_ACCEPT,
+                &one, (ev_socklen_t)sizeof(one));
+        setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+                &one, (ev_socklen_t)sizeof(one));
     }
 #endif
 
@@ -2615,7 +2715,7 @@ evhttpx_bind_sockaddr(evhttpx_t * httpx, struct sockaddr * sa, size_t sin_len, i
          */
         if (TAILQ_FIRST(&httpx->vhosts) != NULL) {
             SSL_CTX_set_tlsext_servername_callback(httpx->ssl_ctx,
-                                                   _evhttpx_ssl_servername);
+                    _evhttpx_ssl_servername);
         }
     }
 #endif
@@ -2624,7 +2724,11 @@ evhttpx_bind_sockaddr(evhttpx_t * httpx, struct sockaddr * sa, size_t sin_len, i
 }
 
 int
-evhttpx_bind_socket(evhttpx_t * httpx, const char * baddr, uint16_t port, int backlog) {
+evhttpx_bind_socket(evhttpx_t * httpx,
+        const char * baddr,
+        uint16_t port,
+        int backlog)
+{
     struct sockaddr_in  sin;
     struct sockaddr_in6 sin6;
 
@@ -2684,12 +2788,17 @@ evhttpx_bind_socket(evhttpx_t * httpx, const char * baddr, uint16_t port, int ba
 } /* evhttpx_bind_socket */
 
 void
-evhttpx_callbacks_free(evhttpx_callbacks_t * callbacks) {
+evhttpx_callbacks_free(evhttpx_callbacks_t * callbacks)
+{
     /* XXX TODO */
 }
 
 evhttpx_callback_t *
-evhttpx_callback_new(const char * path, evhttpx_callback_type type, evhttpx_callback_cb cb, void * arg) {
+evhttpx_callback_new(const char * path,
+        evhttpx_callback_type type,
+        evhttpx_callback_cb cb,
+        void * arg)
+{
     evhttpx_callback_t * hcb;
 
     if (!(hcb = calloc(sizeof(evhttpx_callback_t), 1))) {
@@ -2717,7 +2826,8 @@ evhttpx_callback_new(const char * path, evhttpx_callback_type type, evhttpx_call
 }
 
 void
-evhttpx_callback_free(evhttpx_callback_t * callback) {
+evhttpx_callback_free(evhttpx_callback_t * callback)
+{
     if (callback == NULL) {
         return;
     }
@@ -2741,14 +2851,20 @@ evhttpx_callback_free(evhttpx_callback_t * callback) {
 }
 
 int
-evhttpx_callbacks_add_callback(evhttpx_callbacks_t * cbs, evhttpx_callback_t * cb) {
+evhttpx_callbacks_add_callback(evhttpx_callbacks_t * cbs,
+        evhttpx_callback_t * cb)
+{
     TAILQ_INSERT_TAIL(cbs, cb, next);
 
     return 0;
 }
 
 int
-evhttpx_set_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type type, evhttpx_hook cb, void * arg) {
+evhttpx_set_hook(evhttpx_hooks_t ** hooks,
+        evhttpx_hook_type_e type,
+        evhttpx_hook cb,
+        void * arg)
+{
     if (*hooks == NULL) {
         if (!(*hooks = calloc(sizeof(evhttpx_hooks_t), 1))) {
             return -1;
@@ -2816,12 +2932,14 @@ evhttpx_set_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type type, evhttpx_hook 
 }         /* evhttpx_set_hook */
 
 int
-evhttpx_unset_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type type) {
+evhttpx_unset_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type_e type)
+{
     return evhttpx_set_hook(hooks, type, NULL, NULL);
 }
 
 int
-evhttpx_unset_all_hooks(evhttpx_hooks_t ** hooks) {
+evhttpx_unset_all_hooks(evhttpx_hooks_t ** hooks)
+{
     int res = 0;
 
     if (evhttpx_unset_hook(hooks, evhttpx_hook_on_headers_start)) {
@@ -2880,13 +2998,18 @@ evhttpx_unset_all_hooks(evhttpx_hooks_t ** hooks) {
 } /* evhttpx_unset_all_hooks */
 
 evhttpx_callback_t *
-evhttpx_set_cb(evhttpx_t * httpx, const char * path, evhttpx_callback_cb cb, void * arg) {
+evhttpx_set_cb(evhttpx_t * httpx,
+        const char * path,
+        evhttpx_callback_cb cb,
+        void * arg)
+{
     evhttpx_callback_t * hcb;
 
     _evhttpx_lock(httpx);
 
     if (httpx->callbacks == NULL) {
-        if (!(httpx->callbacks = calloc(sizeof(evhttpx_callbacks_t), sizeof(char)))) {
+        if (!(httpx->callbacks = calloc(sizeof(evhttpx_callbacks_t),
+                        sizeof(char)))) {
             _evhttpx_unlock(httpx);
             return NULL;
         }
@@ -2894,7 +3017,8 @@ evhttpx_set_cb(evhttpx_t * httpx, const char * path, evhttpx_callback_cb cb, voi
         TAILQ_INIT(httpx->callbacks);
     }
 
-    if (!(hcb = evhttpx_callback_new(path, evhttpx_callback_type_hash, cb, arg))) {
+    if (!(hcb = evhttpx_callback_new(path,
+                    evhttpx_callback_type_hash, cb, arg))) {
         _evhttpx_unlock(httpx);
         return NULL;
     }
@@ -2911,7 +3035,8 @@ evhttpx_set_cb(evhttpx_t * httpx, const char * path, evhttpx_callback_cb cb, voi
 
 #ifndef EVHTTPX_DISABLE_EVTHR
 static void
-_evhttpx_thread_init(evthr_t * thr, void * arg) {
+_evhttpx_thread_init(evthr_t * thr, void * arg)
+{
     evhttpx_t * httpx = (evhttpx_t *)arg;
 
     if (httpx->thread_init_cb) {
@@ -2920,7 +3045,11 @@ _evhttpx_thread_init(evthr_t * thr, void * arg) {
 }
 
 int
-evhttpx_use_threads(evhttpx_t * httpx, evhttpx_thread_init_cb init_cb, int nthreads, void * arg) {
+evhttpx_use_threads(evhttpx_t * httpx,
+        evhttpx_thread_init_cb init_cb,
+        int nthreads,
+        void * arg)
+{
     httpx->thread_init_cb    = init_cb;
     httpx->thread_init_cbarg = arg;
 
@@ -2928,7 +3057,8 @@ evhttpx_use_threads(evhttpx_t * httpx, evhttpx_thread_init_cb init_cb, int nthre
     evhttpx_ssl_use_threads();
 #endif
 
-    if (!(httpx->thr_pool = evthr_pool_new(nthreads, _evhttpx_thread_init, httpx))) {
+    if (!(httpx->thr_pool = evthr_pool_new(nthreads,
+                    _evhttpx_thread_init, httpx))) {
         return -1;
     }
 
@@ -2940,7 +3070,8 @@ evhttpx_use_threads(evhttpx_t * httpx, evhttpx_thread_init_cb init_cb, int nthre
 
 #ifndef EVHTTPX_DISABLE_EVTHR
 int
-evhttpx_use_callback_locks(evhttpx_t * httpx) {
+evhttpx_use_callback_locks(evhttpx_t * httpx)
+{
     if (httpx == NULL) {
         return -1;
     }
@@ -2955,13 +3086,18 @@ evhttpx_use_callback_locks(evhttpx_t * httpx) {
 #endif
 
 evhttpx_callback_t *
-evhttpx_set_glob_cb(evhttpx_t * httpx, const char * pattern, evhttpx_callback_cb cb, void * arg) {
+evhttpx_set_glob_cb(evhttpx_t * httpx,
+        const char * pattern,
+        evhttpx_callback_cb cb,
+        void * arg)
+{
     evhttpx_callback_t * hcb;
 
     _evhttpx_lock(httpx);
 
     if (httpx->callbacks == NULL) {
-        if (!(httpx->callbacks = calloc(sizeof(evhttpx_callbacks_t), sizeof(char)))) {
+        if (!(httpx->callbacks = calloc(sizeof(evhttpx_callbacks_t),
+                        sizeof(char)))) {
             _evhttpx_unlock(httpx);
             return NULL;
         }
@@ -2969,7 +3105,8 @@ evhttpx_set_glob_cb(evhttpx_t * httpx, const char * pattern, evhttpx_callback_cb
         TAILQ_INIT(httpx->callbacks);
     }
 
-    if (!(hcb = evhttpx_callback_new(pattern, evhttpx_callback_type_glob, cb, arg))) {
+    if (!(hcb = evhttpx_callback_new(pattern,
+                    evhttpx_callback_type_glob, cb, arg))) {
         _evhttpx_unlock(httpx);
         return NULL;
     }
@@ -2985,19 +3122,28 @@ evhttpx_set_glob_cb(evhttpx_t * httpx, const char * pattern, evhttpx_callback_cb
 }
 
 void
-evhttpx_set_gencb(evhttpx_t * httpx, evhttpx_callback_cb cb, void * arg) {
+evhttpx_set_gencb(evhttpx_t * httpx,
+        evhttpx_callback_cb cb,
+        void * arg)
+{
     httpx->defaults.cb    = cb;
     httpx->defaults.cbarg = arg;
 }
 
 void
-evhttpx_set_pre_accept_cb(evhttpx_t * httpx, evhttpx_pre_accept_cb cb, void * arg) {
+evhttpx_set_pre_accept_cb(evhttpx_t * httpx,
+        evhttpx_pre_accept_cb cb,
+        void * arg)
+{
     httpx->defaults.pre_accept       = cb;
     httpx->defaults.pre_accept_cbarg = arg;
 }
 
 void
-evhttpx_set_post_accept_cb(evhttpx_t * httpx, evhttpx_post_accept_cb cb, void * arg) {
+evhttpx_set_post_accept_cb(evhttpx_t * httpx,
+        evhttpx_post_accept_cb cb,
+        void * arg)
+{
     httpx->defaults.post_accept       = cb;
     httpx->defaults.post_accept_cbarg = arg;
 }
@@ -3005,7 +3151,8 @@ evhttpx_set_post_accept_cb(evhttpx_t * httpx, evhttpx_post_accept_cb cb, void * 
 #ifndef EVHTTPX_DISABLE_SSL
 #ifndef EVHTTPX_DISABLE_EVTHR
 int
-evhttpx_ssl_use_threads(void) {
+evhttpx_ssl_use_threads(void)
+{
     int i;
 
     if (ssl_locks_initialized == 1) {
@@ -3030,12 +3177,9 @@ evhttpx_ssl_use_threads(void) {
 #endif
 
 int
-evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg) {
+evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg)
+{
     long                  cache_mode;
-    evhttpx_ssl_scache_init init_cb = NULL;
-    evhttpx_ssl_scache_add  add_cb  = NULL;
-    evhttpx_ssl_scache_get  get_cb  = NULL;
-    evhttpx_ssl_scache_del  del_cb  = NULL;
 
     if (cfg == NULL || httpx == NULL || cfg->pemfile == NULL) {
         return -1;
@@ -3066,11 +3210,13 @@ evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg) {
 
         nid  = OBJ_sn2nid(cfg->named_curve);
         if (nid == 0) {
-            fprintf(stderr, "ECDH initialization failed: unknown curve %s\n", cfg->named_curve);
+            fprintf(stderr, "ECDH initialization failed: unknown curve %s\n",
+                    cfg->named_curve);
         }
         ecdh = EC_KEY_new_by_curve_name(nid);
         if (ecdh == NULL) {
-            fprintf(stderr, "ECDH initialization failed for curve %s\n", cfg->named_curve);
+            fprintf(stderr, "ECDH initialization failed for curve %s\n",
+                    cfg->named_curve);
         }
         SSL_CTX_set_tmp_ecdh(httpx->ssl_ctx, ecdh);
         EC_KEY_free(ecdh);
@@ -3082,7 +3228,8 @@ evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg) {
     }
 
     SSL_CTX_load_verify_locations(httpx->ssl_ctx, cfg->cafile, cfg->capath);
-    X509_STORE_set_flags(SSL_CTX_get_cert_store(httpx->ssl_ctx), cfg->store_flags);
+    X509_STORE_set_flags(SSL_CTX_get_cert_store(httpx->ssl_ctx),
+            cfg->store_flags);
     SSL_CTX_set_verify(httpx->ssl_ctx, cfg->verify_peer, cfg->x509_verify_cb);
 
     if (cfg->x509_chk_issued_cb != NULL) {
@@ -3101,23 +3248,11 @@ evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg) {
             cache_mode = SSL_SESS_CACHE_SERVER |
                          SSL_SESS_CACHE_NO_INTERNAL |
                          SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
-
-            init_cb    = cfg->scache_init;
-            add_cb     = cfg->scache_add;
-            get_cb     = cfg->scache_get;
-            del_cb     = cfg->scache_del;
             break;
         case evhttpx_ssl_scache_type_builtin:
             cache_mode = SSL_SESS_CACHE_SERVER |
                          SSL_SESS_CACHE_NO_INTERNAL |
                          SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
-
-#if 0
-            init_cb    = _evhttpx_ssl_builtin_init;
-            add_cb     = _evhttpx_ssl_builtin_add;
-            get_cb     = _evhttpx_ssl_builtin_get;
-            del_cb     = _evhttpx_ssl_builtin_del;
-#endif
             break;
         case evhttpx_ssl_scache_type_internal:
         default:
@@ -3125,26 +3260,29 @@ evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg) {
             break;
     }     /* switch */
 
-    SSL_CTX_use_certificate_file(httpx->ssl_ctx, cfg->pemfile, SSL_FILETYPE_PEM);
+    SSL_CTX_use_certificate_file(httpx->ssl_ctx, cfg->pemfile,
+            SSL_FILETYPE_PEM);
     SSL_CTX_use_PrivateKey_file(httpx->ssl_ctx,
-                                cfg->privfile ? cfg->privfile : cfg->pemfile, SSL_FILETYPE_PEM);
+            cfg->privfile ? cfg->privfile : cfg->pemfile,
+            SSL_FILETYPE_PEM);
 
     SSL_CTX_set_session_id_context(httpx->ssl_ctx,
-                                   (void *)&session_id_context,
-                                   sizeof(session_id_context));
+            (void *)&session_id_context,
+            sizeof(session_id_context));
 
     SSL_CTX_set_app_data(httpx->ssl_ctx, httpx);
     SSL_CTX_set_session_cache_mode(httpx->ssl_ctx, cache_mode);
 
     if (cache_mode != SSL_SESS_CACHE_OFF) {
         SSL_CTX_sess_set_cache_size(httpx->ssl_ctx,
-                                    cfg->scache_size ? cfg->scache_size : 1024);
+                cfg->scache_size ? cfg->scache_size : 1024);
 
         if (cfg->scache_type == evhttpx_ssl_scache_type_builtin ||
             cfg->scache_type == evhttpx_ssl_scache_type_user) {
             SSL_CTX_sess_set_new_cb(httpx->ssl_ctx, _evhttpx_ssl_add_scache_ent);
             SSL_CTX_sess_set_get_cb(httpx->ssl_ctx, _evhttpx_ssl_get_scache_ent);
-            SSL_CTX_sess_set_remove_cb(httpx->ssl_ctx, _evhttpx_ssl_delete_scache_ent);
+            SSL_CTX_sess_set_remove_cb(httpx->ssl_ctx,
+                    _evhttpx_ssl_delete_scache_ent);
 
             if (cfg->scache_init) {
                 cfg->args = (cfg->scache_init)(httpx);
@@ -3158,12 +3296,14 @@ evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * cfg) {
 #endif
 
 evbev_t *
-evhttpx_connection_get_bev(evhttpx_connection_t * connection) {
+evhttpx_connection_get_bev(evhttpx_connection_t * connection)
+{
     return connection->bev;
 }
 
 evbev_t *
-evhttpx_connection_take_ownership(evhttpx_connection_t * connection) {
+evhttpx_connection_take_ownership(evhttpx_connection_t * connection)
+{
     evbev_t * bev = evhttpx_connection_get_bev(connection);
 
     if (connection->hooks) {
@@ -3185,34 +3325,41 @@ evhttpx_connection_take_ownership(evhttpx_connection_t * connection) {
 }
 
 evbev_t *
-evhttpx_request_get_bev(evhttpx_request_t * request) {
+evhttpx_request_get_bev(evhttpx_request_t * request)
+{
     return evhttpx_connection_get_bev(request->conn);
 }
 
 evbev_t *
-evhttpx_request_take_ownership(evhttpx_request_t * request) {
-    return evhttpx_connection_take_ownership(evhttpx_request_get_connection(request));
+evhttpx_request_take_ownership(evhttpx_request_t * request)
+{
+    return evhttpx_connection_take_ownership(
+            evhttpx_request_get_connection(request));
 }
 
 void
-evhttpx_connection_set_bev(evhttpx_connection_t * conn, evbev_t * bev) {
+evhttpx_connection_set_bev(evhttpx_connection_t * conn, evbev_t * bev)
+{
     conn->bev = bev;
 }
 
 void
-evhttpx_request_set_bev(evhttpx_request_t * request, evbev_t * bev) {
+evhttpx_request_set_bev(evhttpx_request_t * request, evbev_t * bev)
+{
     evhttpx_connection_set_bev(request->conn, bev);
 }
 
 evhttpx_connection_t *
-evhttpx_request_get_connection(evhttpx_request_t * request) {
+evhttpx_request_get_connection(evhttpx_request_t * request)
+{
     return request->conn;
 }
 
 void
 evhttpx_connection_set_timeouts(evhttpx_connection_t   * c,
                               const struct timeval * rtimeo,
-                              const struct timeval * wtimeo) {
+                              const struct timeval * wtimeo)
+{
     if (!c) {
         return;
     }
@@ -3221,7 +3368,8 @@ evhttpx_connection_set_timeouts(evhttpx_connection_t   * c,
 }
 
 void
-evhttpx_connection_set_max_body_size(evhttpx_connection_t * c, uint64_t len) {
+evhttpx_connection_set_max_body_size(evhttpx_connection_t * c, uint64_t len)
+{
     if (len == 0) {
         c->max_body_size = c->httpx->max_body_size;
     } else {
@@ -3230,12 +3378,14 @@ evhttpx_connection_set_max_body_size(evhttpx_connection_t * c, uint64_t len) {
 }
 
 void
-evhttpx_request_set_max_body_size(evhttpx_request_t * req, uint64_t len) {
+evhttpx_request_set_max_body_size(evhttpx_request_t * req, uint64_t len)
+{
     evhttpx_connection_set_max_body_size(req->conn, len);
 }
 
 void
-evhttpx_connection_free(evhttpx_connection_t * connection) {
+evhttpx_connection_free(evhttpx_connection_t * connection)
+{
     if (connection == NULL) {
         return;
     }
@@ -3275,12 +3425,16 @@ evhttpx_connection_free(evhttpx_connection_t * connection) {
 }     /* evhttpx_connection_free */
 
 void
-evhttpx_request_free(evhttpx_request_t * request) {
+evhttpx_request_free(evhttpx_request_t * request)
+{
     _evhttpx_request_free(request);
 }
 
 void
-evhttpx_set_timeouts(evhttpx_t * httpx, const struct timeval * r_timeo, const struct timeval * w_timeo) {
+evhttpx_set_timeouts(evhttpx_t * httpx,
+        const struct timeval * r_timeo,
+        const struct timeval * w_timeo)
+{
     if (r_timeo != NULL) {
         httpx->recv_timeo = *r_timeo;
     }
@@ -3291,7 +3445,8 @@ evhttpx_set_timeouts(evhttpx_t * httpx, const struct timeval * r_timeo, const st
 }
 
 void
-evhttpx_set_max_keepalive_requests(evhttpx_t * httpx, uint64_t num) {
+evhttpx_set_max_keepalive_requests(evhttpx_t * httpx, uint64_t num)
+{
     httpx->max_keepalive_requests = num;
 }
 
@@ -3302,17 +3457,20 @@ evhttpx_set_max_keepalive_requests(evhttpx_t * httpx, uint64_t num) {
  * @param flags
  */
 void
-evhttpx_set_bev_flags(evhttpx_t * httpx, int flags) {
+evhttpx_set_bev_flags(evhttpx_t * httpx, int flags)
+{
     httpx->bev_flags = flags;
 }
 
 void
-evhttpx_set_max_body_size(evhttpx_t * httpx, uint64_t len) {
+evhttpx_set_max_body_size(evhttpx_t * httpx, uint64_t len)
+{
     httpx->max_body_size = len;
 }
 
 int
-evhttpx_add_alias(evhttpx_t * evhttpx, const char * name) {
+evhttpx_add_alias(evhttpx_t * evhttpx, const char * name)
+{
     evhttpx_alias_t * alias;
 
     if (evhttpx == NULL || name == NULL) {
@@ -3347,7 +3505,8 @@ evhttpx_add_alias(evhttpx_t * evhttpx, const char * name) {
  * @return
  */
 int
-evhttpx_add_vhost(evhttpx_t * evhttpx, const char * name, evhttpx_t * vhost) {
+evhttpx_add_vhost(evhttpx_t * evhttpx, const char * name, evhttpx_t * vhost)
+{
     if (evhttpx == NULL || name == NULL || vhost == NULL) {
         return -1;
     }
@@ -3382,7 +3541,8 @@ evhttpx_add_vhost(evhttpx_t * evhttpx, const char * name, evhttpx_t * vhost) {
 }
 
 evhttpx_t *
-evhttpx_new(evbase_t * evbase, void * arg) {
+evhttpx_new(evbase_t * evbase, void * arg)
+{
     evhttpx_t * httpx;
 
     if (evbase == NULL) {
@@ -3408,7 +3568,8 @@ evhttpx_new(evbase_t * evbase, void * arg) {
 }
 
 void
-evhttpx_free(evhttpx_t * evhttpx) {
+evhttpx_free(evhttpx_t * evhttpx)
+{
     evhttpx_alias_t * evhttpx_alias, * tmp;
 
     if (evhttpx == NULL) {

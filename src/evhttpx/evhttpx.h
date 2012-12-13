@@ -1,12 +1,6 @@
 #ifndef _EVHTTPX_H_
 #define _EVHTTPX_H_
 
-#ifndef EVHTTPX_DISABLE_EVTHR
-#include "evthr.h"
-#endif
-
-#include "http_parse.h"
-
 #include <sys/queue.h>
 #include <event2/event.h>
 #include <event2/listener.h>
@@ -19,6 +13,11 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #endif
+
+#ifndef EVHTTPX_DISABLE_EVTHR
+#include "evthr.h"
+#endif
+#include "http-parser.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -55,7 +54,6 @@ typedef struct evhttpx_s            evhttpx_t;
 typedef struct evhttpx_defaults_s   evhttpx_defaults_t;
 typedef struct evhttpx_callbacks_s  evhttpx_callbacks_t;
 typedef struct evhttpx_callback_s   evhttpx_callback_t;
-typedef struct evhttpx_defaults_s   evhttpx_defaults_5;
 typedef struct evhttpx_kv_s         evhttpx_kv_t;
 typedef struct evhttpx_kvs_s        evhttpx_kvs_t;
 typedef struct evhttpx_uri_s        evhttpx_uri_t;
@@ -116,7 +114,7 @@ enum evhttpx_proto {
     evhttpx_PROTO_11
 };
 
-typedef enum evhttpx_hook_type       evhttpx_hook_type;
+typedef enum evhttpx_hook_type       evhttpx_hook_type_e;
 typedef enum evhttpx_callback_type   evhttpx_callback_type;
 typedef enum evhttpx_proto           evhttpx_proto;
 typedef enum evhttpx_ssl_scache_type evhttpx_ssl_scache_type;
@@ -586,7 +584,7 @@ evhttpx_callback_t * evhttpx_set_glob_cb(evhttpx_t * htp, const char * pattern, 
  *
  * @return 0 on success, -1 on error (if hooks is NULL, it is allocated)
  */
-int evhttpx_set_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type type, evhttpx_hook cb, void * arg);
+int evhttpx_set_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type_e type, evhttpx_hook cb, void * arg);
 
 
 /**
@@ -597,7 +595,7 @@ int evhttpx_set_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type type, evhttpx_h
  *
  * @return
  */
-int evhttpx_unset_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type type);
+int evhttpx_unset_hook(evhttpx_hooks_t ** hooks, evhttpx_hook_type_e type);
 
 
 /**
