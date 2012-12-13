@@ -1,7 +1,6 @@
 #ifndef _EVHTTPX_H_
 #define _EVHTTPX_H_
 
-#include <sys/queue.h>
 #include <event2/event.h>
 #include <event2/listener.h>
 #include <event2/buffer.h>
@@ -14,10 +13,11 @@
 #include <openssl/rand.h>
 #endif
 
+#include <sys/queue.h>
 #ifndef EVHTTPX_DISABLE_EVTHR
-#include "evthr.h"
+#include <evthr/evthr.h>
 #endif
-#include "http-parser.h"
+#include <httpparser/http-parser.h>
 
 #ifdef __cplusplus
 extern "C" {

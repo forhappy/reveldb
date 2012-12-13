@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -13,9 +14,9 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
-#include <sys/tree.h>
 
-#include "evhttpx.h"
+#include <sys/tree.h>
+#include <evhttpx/evhttpx.h>
 
 static int _evhttpx_request_parser_start(http_parser_t * p);
 static int _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len);

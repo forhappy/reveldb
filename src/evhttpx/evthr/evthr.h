@@ -1,15 +1,15 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif
-#ifndef __EVTHR_H__
-#define __EVTHR_H__
+#ifndef _EVTHR_H_
+#define _EVTHR_H_
 
 #include <sched.h>
 #include <pthread.h>
-#include <sys/queue.h>
 #include <event2/event.h>
 #include <event2/thread.h>
 
+#include <sys/queue.h>
 #ifdef __cplusplus
 extern "C" {
 #endif

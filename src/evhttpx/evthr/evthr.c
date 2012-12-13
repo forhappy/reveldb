@@ -9,12 +9,13 @@
 #include <fcntl.h>
 #include <sys/syscall.h>
 #include <sys/ioctl.h>
-#include <sys/queue.h>
 #include <unistd.h>
 #include <pthread.h>
 
 #include <event2/event.h>
 #include <event2/thread.h>
+
+#include <sys/queue.h>
 
 #include "evthr.h"
 
