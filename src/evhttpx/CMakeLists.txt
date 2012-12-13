@@ -88,7 +88,7 @@ endif()
 	
 include_directories(
 	${CMAKE_CURRENT_BINARY_DIR}/compat
-	${CMAKE_CURRENT_SOURCE_DIR}/htparse
+	${CMAKE_CURRENT_SOURCE_DIR}/http_parse
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/evthr
 	${OPENSSL_INCLUDE_DIR}
@@ -109,7 +109,7 @@ if (NOT ${LIBEVENT_OPENSSL_FOUND})
 	set (EVHTTPX_DISABLE_SSL 1)
 endif(NOT ${LIBEVENT_OPENSSL_FOUND})
 
-set(LIBEVHTTPX_SOURCES evhttpx.c htparse/htparse.c)
+set(LIBEVHTTPX_SOURCES evhttpx.c http_parse/http_parse.c)
 
 if (NOT EVHTTPX_DISABLE_EVTHR)
 	set (LIBEVHTTPX_EXTERNAL_LIBS ${LIBEVHTTPX_EXTERNAL_LIBS} pthread)
@@ -129,7 +129,7 @@ set_target_properties(libevhttpx PROPERTIES OUTPUT_NAME "evhttpx")
 
 install (TARGETS libevhttpx DESTINATION lib)
 install (FILES evhttpx.h DESTINATION include)
-install (FILES htparse/htparse.h DESTINATION include)
+install (FILES http_parse/http_parse.h DESTINATION include)
 install (FILES evthr/evthr.h DESTINATION include)
 
 find_library (LIB_DL dl)

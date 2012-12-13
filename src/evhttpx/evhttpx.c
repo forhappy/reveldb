@@ -17,19 +17,19 @@
 
 #include "evhttpx.h"
 
-static int                  _evhttpx_request_parser_start(htparser * p);
-static int                  _evhttpx_request_parser_path(htparser * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_args(htparser * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_header_key(htparser * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_header_val(htparser * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_hostname(htparser * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_headers(htparser * p);
-static int                  _evhttpx_request_parser_body(htparser * p, const char * data, size_t len);
-static int                  _evhttpx_request_parser_fini(htparser * p);
-static int                  _evhttpx_request_parser_chunk_new(htparser * p);
-static int                  _evhttpx_request_parser_chunk_fini(htparser * p);
-static int                  _evhttpx_request_parser_chunks_fini(htparser * p);
-static int                  _evhttpx_request_parser_headers_start(htparser * p);
+static int                  _evhttpx_request_parser_start(http_parser_t * p);
+static int                  _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len);
+static int                  _evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len);
+static int                  _evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t len);
+static int                  _evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t len);
+static int                  _evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t len);
+static int                  _evhttpx_request_parser_headers(http_parser_t * p);
+static int                  _evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len);
+static int                  _evhttpx_request_parser_fini(http_parser_t * p);
+static int                  _evhttpx_request_parser_chunk_new(http_parser_t * p);
+static int                  _evhttpx_request_parser_chunk_fini(http_parser_t * p);
+static int                  _evhttpx_request_parser_chunks_fini(http_parser_t * p);
+static int                  _evhttpx_request_parser_headers_start(http_parser_t * p);
 
 static void                 _evhttpx_connection_readcb(evbev_t * bev, void * arg);
 
@@ -210,7 +210,7 @@ status_code_to_str(evhttpx_res code) {
 /**
  * @brief callback definitions for request processing from libhtparse
  */
-static htparse_hooks request_psets = {
+static http_parse_hooks_t request_psets = {
     .on_msg_begin       = _evhttpx_request_parser_start,
     .method             = NULL,
     .scheme             = NULL,
@@ -815,8 +815,8 @@ _evhttpx_path_free(evhttpx_path_t * path) {
 }
 
 static int
-_evhttpx_request_parser_start(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_start(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if (c->request) {
         if (c->request->finished == 1) {
@@ -834,8 +834,8 @@ _evhttpx_request_parser_start(htparser * p) {
 }
 
 static int
-_evhttpx_request_parser_args(htparser * p, const char * data, size_t len) {
-    evhttpx_connection_t * c   = htparser_get_userdata(p);
+_evhttpx_request_parser_args(http_parser_t * p, const char * data, size_t len) {
+    evhttpx_connection_t * c   = http_parser_get_userdata(p);
     evhttpx_uri_t        * uri = c->request->uri;
 
     if (!(uri->query = evhttpx_parse_query(data, len))) {
@@ -850,8 +850,8 @@ _evhttpx_request_parser_args(htparser * p, const char * data, size_t len) {
 }
 
 static int
-_evhttpx_request_parser_headers_start(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_headers_start(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_headers_start_hook(c->request)) != EVHTTPX_RES_OK) {
         return -1;
@@ -861,8 +861,8 @@ _evhttpx_request_parser_headers_start(htparser * p) {
 }
 
 static int
-_evhttpx_request_parser_header_key(htparser * p, const char * data, size_t len) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_header_key(http_parser_t * p, const char * data, size_t len) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
     char               * key_s;     /* = strndup(data, len); */
     evhttpx_header_t     * hdr;
 
@@ -880,8 +880,8 @@ _evhttpx_request_parser_header_key(htparser * p, const char * data, size_t len) 
 }
 
 static int
-_evhttpx_request_parser_header_val(htparser * p, const char * data, size_t len) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_header_val(http_parser_t * p, const char * data, size_t len) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
     char               * val_s;
     evhttpx_header_t     * header;
 
@@ -1023,8 +1023,8 @@ _evhttpx_request_set_callbacks(evhttpx_request_t * request) {
 } /* _evhttpx_request_set_callbacks */
 
 static int
-_evhttpx_request_parser_hostname(htparser * p, const char * data, size_t len) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_hostname(http_parser_t * p, const char * data, size_t len) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
     evhttpx_t            * evhttpx;
     evhttpx_t            * evhttpx_vhost;
 
@@ -1075,8 +1075,8 @@ _evhttpx_request_parser_hostname(htparser * p, const char * data, size_t len) {
 } /* _evhttpx_request_parser_hostname */
 
 static int
-_evhttpx_request_parser_path(htparser * p, const char * data, size_t len) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
     evhttpx_uri_t        * uri;
     evhttpx_path_t       * path;
 
@@ -1092,9 +1092,9 @@ _evhttpx_request_parser_path(htparser * p, const char * data, size_t len) {
     }
 
     uri->path          = path;
-    uri->scheme        = htparser_get_scheme(p);
+    uri->scheme        = http_parser_get_scheme(p);
 
-    c->request->method = htparser_get_method(p);
+    c->request->method = http_parser_get_method(p);
     c->request->uri    = uri;
 
     _evhttpx_lock(c->httpx);
@@ -1111,12 +1111,12 @@ _evhttpx_request_parser_path(htparser * p, const char * data, size_t len) {
 }     /* _evhttpx_request_parser_path */
 
 static int
-_evhttpx_request_parser_headers(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_headers(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     /* XXX proto should be set with htparsers on_hdrs_begin hook */
-    c->request->keepalive = htparser_should_keep_alive(p);
-    c->request->proto     = _evhttpx_protocol(htparser_get_major(p), htparser_get_minor(p));
+    c->request->keepalive = http_parser_should_keep_alive(p);
+    c->request->proto     = _evhttpx_protocol(http_parser_get_major(p), http_parser_get_minor(p));
     c->request->status    = _evhttpx_headers_hook(c->request, c->request->headers_in);
 
     if (c->request->status != EVHTTPX_RES_OK) {
@@ -1129,15 +1129,15 @@ _evhttpx_request_parser_headers(htparser * p) {
 
     evbuffer_add_printf(bufferevent_get_output(c->bev),
                         "HTTP/%d.%d 100 Continue\r\n\r\n",
-                        htparser_get_major(p),
-                        htparser_get_minor(p));
+                        http_parser_get_major(p),
+                        http_parser_get_minor(p));
 
     return 0;
 }
 
 static int
-_evhttpx_request_parser_body(htparser * p, const char * data, size_t len) {
-    evhttpx_connection_t * c   = htparser_get_userdata(p);
+_evhttpx_request_parser_body(http_parser_t * p, const char * data, size_t len) {
+    evhttpx_connection_t * c   = http_parser_get_userdata(p);
     evbuf_t            * buf;
     int                  res = 0;
 
@@ -1167,11 +1167,11 @@ _evhttpx_request_parser_body(htparser * p, const char * data, size_t len) {
 }
 
 static int
-_evhttpx_request_parser_chunk_new(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_chunk_new(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_chunk_new_hook(c->request,
-                                                    htparser_get_content_length(p))) != EVHTTPX_RES_OK) {
+                                                    http_parser_get_content_length(p))) != EVHTTPX_RES_OK) {
         return -1;
     }
 
@@ -1179,8 +1179,8 @@ _evhttpx_request_parser_chunk_new(htparser * p) {
 }
 
 static int
-_evhttpx_request_parser_chunk_fini(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_chunk_fini(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_chunk_fini_hook(c->request)) != EVHTTPX_RES_OK) {
         return -1;
@@ -1190,8 +1190,8 @@ _evhttpx_request_parser_chunk_fini(htparser * p) {
 }
 
 static int
-_evhttpx_request_parser_chunks_fini(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_chunks_fini(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     if ((c->request->status = _evhttpx_chunks_fini_hook(c->request)) != EVHTTPX_RES_OK) {
         return -1;
@@ -1245,8 +1245,8 @@ _evhttpx_should_parse_query_body(evhttpx_request_t * req) {
 }
 
 static int
-_evhttpx_request_parser_fini(htparser * p) {
-    evhttpx_connection_t * c = htparser_get_userdata(p);
+_evhttpx_request_parser_fini(http_parser_t * p) {
+    evhttpx_connection_t * c = http_parser_get_userdata(p);
 
     /* check to see if we should use the body of the request as the query
      * arguments.
@@ -1299,7 +1299,7 @@ _evhttpx_create_reply(evhttpx_request_t * request, evhttpx_res code) {
     evbuf_t    * buf          = evbuffer_new();
     const char * content_type = evhttpx_header_find(request->headers_out, "Content-Type");
 
-    if (htparser_get_multipart(request->conn->parser) == 1) {
+    if (http_parser_get_multipart(request->conn->parser) == 1) {
         goto check_proto;
     }
 
@@ -1360,15 +1360,15 @@ check_proto:
         default:
             /* this sometimes happens when a response is made but paused before
              * the method has been parsed */
-            htparser_set_major(request->conn->parser, 1);
-            htparser_set_minor(request->conn->parser, 0);
+            http_parser_set_major(request->conn->parser, 1);
+            http_parser_set_minor(request->conn->parser, 0);
             break;
     } /* switch */
 
     /* add the status line */
     evbuffer_add_printf(buf, "HTTP/%d.%d %d %s\r\n",
-                        htparser_get_major(request->conn->parser),
-                        htparser_get_minor(request->conn->parser),
+                        http_parser_get_major(request->conn->parser),
+                        http_parser_get_minor(request->conn->parser),
                         code, status_code_to_str(code));
 
     evhttpx_headers_for_each(request->headers_out, _evhttpx_create_headers, buf);
@@ -1410,7 +1410,7 @@ _evhttpx_connection_readcb(evbev_t * bev, void * arg) {
 
     bufferevent_disable(bev, EV_WRITE);
     {
-        nread = htparser_run(c->parser, &request_psets, (const char *)buf, avail);
+        nread = http_parser_run(c->parser, &request_psets, (const char *)buf, avail);
     }
     bufferevent_enable(bev, EV_WRITE);
 
@@ -1491,10 +1491,10 @@ _evhttpx_connection_writecb(evbev_t * bev, void * arg) {
             c->httpx = orig_htp;
         }
 
-        htparser_init(c->parser, htp_type_request);
+        http_parser_init(c->parser, httpx_type_request);
 
 
-        htparser_set_userdata(c->parser, c);
+        http_parser_set_userdata(c->parser, c);
         return;
     } else {
         evhttpx_connection_free(c);
@@ -1632,10 +1632,10 @@ _evhttpx_connection_new(evhttpx_t * httpx, int sock) {
     connection->owner  = 1;
     connection->sock   = sock;
     connection->httpx    = httpx;
-    connection->parser = htparser_new();
+    connection->parser = http_parser_new();
 
-    htparser_init(connection->parser, htp_type_request);
-    htparser_set_userdata(connection->parser, connection);
+    http_parser_init(connection->parser, httpx_type_request);
+    http_parser_set_userdata(connection->parser, connection);
 
     return connection;
 }
@@ -1849,9 +1849,9 @@ _evhttpx_ssl_servername(evhttpx_ssl_t * ssl, int * unused, void * arg) {
  * PUBLIC FUNCTIONS
  */
 
-htp_method
+http_method_e
 evhttpx_request_get_method(evhttpx_request_t * r) {
-    return htparser_get_method(r->conn->parser);
+    return http_parser_get_method(r->conn->parser);
 }
 
 /**
@@ -2474,11 +2474,11 @@ evhttpx_send_reply(evhttpx_request_t * request, evhttpx_res code) {
 }
 
 int
-evhttpx_response_needs_body(const evhttpx_res code, const htp_method method) {
+evhttpx_response_needs_body(const evhttpx_res code, const http_method_e method) {
     return code != EVHTTPX_RES_NOCONTENT &&
            code != EVHTTPX_RES_NOTMOD &&
            (code < 100 || code >= 200) &&
-           method != htp_method_HEAD;
+           method != http_method_HEAD;
 }
 
 void

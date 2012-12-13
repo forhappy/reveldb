@@ -5,7 +5,7 @@
 #include "evthr.h"
 #endif
 
-#include "htparse.h"
+#include "http_parse.h"
 
 #include <sys/queue.h>
 #include <event2/event.h>
@@ -337,7 +337,7 @@ struct evhttpx_uri_s {
     unsigned char     * fragment;     /**< data after '#' in uri */
     unsigned char     * query_raw;    /**< the unparsed query arguments */
     evhttpx_query_t     * query;        /**< list of k/v for query arguments */
-    htp_scheme          scheme;       /**< set if a scheme is found */
+    http_scheme_e          scheme;       /**< set if a scheme is found */
 };
 
 
@@ -383,7 +383,7 @@ struct evhttpx_request_s {
     evhttpx_headers_t    * headers_in;  /**< headers from client */
     evhttpx_headers_t    * headers_out; /**< headers to client */
     evhttpx_proto          proto;       /**< HTTP protocol used */
-    htp_method           method;      /**< HTTP method used */
+    http_method_e           method;      /**< HTTP method used */
     evhttpx_res            status;      /**< The HTTP response code or other error conditions */
     int                  keepalive;   /**< set to 1 if the connection is keep-alive */
     int                  finished;    /**< set to 1 if the request is fully processed */
@@ -394,7 +394,7 @@ struct evhttpx_request_s {
     int               error;
 };
 
-#define evhttpx_request_content_len(r) htparser_get_content_length(r->conn->parser)
+#define evhttpx_request_content_len(r) http_parser_get_content_length(r->conn->parser)
 
 struct evhttpx_connection_s {
     evhttpx_t         * httpx;
@@ -403,7 +403,7 @@ struct evhttpx_connection_s {
     evthr_t         * thread;
     evhttpx_ssl_t     * ssl;
     evhttpx_hooks_t   * hooks;
-    htparser        * parser;
+    http_parser_t        * parser;
     event_t         * resume_ev;
     struct sockaddr * saddr;
     struct timeval    recv_timeo;    /**< conn read timeouts (overrides global) */
@@ -659,7 +659,7 @@ void evhttpx_send_reply_end(evhttpx_request_t * request);
  * @return 1 if the response MUST have a body; 0 if the response MUST NOT have
  *     a body.
  */
-int evhttpx_response_needs_body(const evhttpx_res code, const htp_method method);
+int evhttpx_response_needs_body(const evhttpx_res code, const http_method_e method);
 
 
 /**
@@ -880,7 +880,7 @@ const char * evhttpx_header_find(evhttpx_headers_t * headers, const char * key);
  *
  * @return htp_method enum
  */
-htp_method evhttpx_request_get_method(evhttpx_request_t * r);
+http_method_e evhttpx_request_get_method(evhttpx_request_t * r);
 
 void       evhttpx_connection_pause(evhttpx_connection_t * connection);
 void       evhttpx_connection_resume(evhttpx_connection_t * connection);

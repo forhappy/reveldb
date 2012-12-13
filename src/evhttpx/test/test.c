@@ -467,9 +467,6 @@ main(int argc, char ** argv) {
     evhttpx_callback_t * cb_3   = NULL;
     evhttpx_callback_t * cb_4   = NULL;
     evhttpx_callback_t * cb_5   = NULL;
-    evhttpx_callback_t * cb_6   = NULL;
-    evhttpx_callback_t * cb_7   = NULL;
-    evhttpx_callback_t * cb_8   = NULL;
     evhttpx_callback_t * cb_9   = NULL;
     evhttpx_callback_t * cb_10  = NULL;
     evhttpx_callback_t * cb_11  = NULL;
@@ -500,9 +497,6 @@ main(int argc, char ** argv) {
     /* set a callback which takes ownership of the underlying bufferevent and
      * just starts echoing things
      */
-    /* set a callback to pause on each header for cb_7 */
-    evhttpx_set_hook(&cb_7->hooks, evhttpx_hook_on_path, pause_init_cb, NULL);
-
     /* set a callback to set hooks specifically for the cb_6 callback */
 
     evhttpx_set_hook(&cb_10->hooks, evhttpx_hook_on_headers, set_max_body, NULL);
@@ -576,7 +570,6 @@ main(int argc, char ** argv) {
     evhttpx_callback_free(cb_11);
     evhttpx_callback_free(cb_10);
     evhttpx_callback_free(cb_9);
-    evhttpx_callback_free(cb_7);
     evhttpx_callback_free(cb_5);
     evhttpx_callback_free(cb_4);
     evhttpx_callback_free(cb_3);
