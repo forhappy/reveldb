@@ -1,2 +1,29 @@
 {
+    "server": {
+        "host": "0.0.0.0",
+        "port": "8087, 8088",
+        "username": "root",
+        "password": "root",
+        "datadir": "/tmp/reveldb/",
+        "pidfile": "/tmp/reveldb/reveldb.pid"
+    },
+    "db": {
+        "dbname": "default",
+        "lru_cache_size": 65535,
+        "create_if_missing": true,
+        "error_if_exist": false,
+        "write_buffer_size": 65535,
+        "paranoid_checks": true,
+        "max_open_files": 1024,
+        "block_size": 65535,
+        "block_restart_interval": 16,
+        "compression": false,
+        "verify_checksums": false,
+        "fill_cache": false,
+        "sync": false
+    },
+    "log": {
+        "level":"DEBUG",
+        "stream": "logs/reveldb.log"
+    }
 }
