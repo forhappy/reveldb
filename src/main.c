@@ -280,6 +280,36 @@ URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
     return;
 }
 
+static void
+URI_rpc_dummy_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    char *response = NULL;
+
+    /* HTTP protocol used */
+    evhttpx_proto proto = req->proto;
+    if (proto != evhttpx_PROTO_11) {
+        response = tinydb_jsonfy_error_response("ProtocalError",
+                "Protocal error, you may have to use HTTP/1.1 to do request.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        free(response);
+        return;
+    }
+    /* request method. */
+    int method= evhttpx_request_get_method(req);
+    if (method != http_method_POST) {
+        response = tinydb_jsonfy_error_response("HTTPMethodError",
+                "HTTP method error, you may have to use POST to do request.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        free(response);
+        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        return;
+    }
+
+    return;
+}
+
 int main(int argc, const char *argv[])
 {
     reveldb_config_t *config = reveldb_config_init("./conf/reveldb.json");
@@ -296,11 +326,13 @@ int main(int argc, const char *argv[])
     evhttpx_callback_t * rpc_get_cb = NULL;
     evhttpx_callback_t * rpc_set_cb = NULL;
     evhttpx_callback_t * rpc_del_cb = NULL;
+    evhttpx_callback_t * rpc_dummy_cb = NULL;
 
     rpc_new_cb = evhttpx_set_cb(httpx, "/rpc/new", URI_rpc_new_cb, NULL);
     rpc_get_cb = evhttpx_set_cb(httpx, "/rpc/get", URI_rpc_get_cb, NULL);
     rpc_set_cb = evhttpx_set_cb(httpx, "/rpc/set", URI_rpc_set_cb, NULL);
     rpc_del_cb = evhttpx_set_cb(httpx, "/rpc/del", URI_rpc_del_cb, NULL);
+    rpc_del_cb = evhttpx_set_cb(httpx, "/dummy/", URI_rpc_dummy_cb, NULL);
 
     evhttpx_bind_socket(httpx, "0.0.0.0", 8088, 1024);
 
