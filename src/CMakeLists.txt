@@ -7,7 +7,8 @@ SET(REVELDB_SRC
     main.c
     reveldb.c
     cJSON.c
-    config.c
+    xconfig.c
+    log.c
     rbtree.c
     splaytree.c
     tstring.c

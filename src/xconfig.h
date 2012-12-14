@@ -1,7 +1,7 @@
 /*
  * =============================================================================
  *
- *       Filename:  config.h
+ *       Filename:  xconfig.h
  *
  *    Description:  reveldb configuration parser.
  *
@@ -13,22 +13,27 @@
  * =============================================================================
  */
 
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _XCONFIG_H_
+#define _XCONFIG_H_
 
 typedef struct reveldb_config_s_ reveldb_config_t;
 typedef struct reveldb_server_config_s_ reveldb_server_config_t;
 typedef struct reveldb_db_config_s_ reveldb_db_config_t;
-typedef struct reveldb_log_config_s_ reveldb_log_config_t
+typedef struct reveldb_log_config_s_ reveldb_log_config_t;
 
 struct reveldb_config_s_ {
-    reveldb_server_config_t * server_conf;
-    reveldb_db_config_t     * db_conf;
-    reveldb_log_config_t    * log_conf;
+    reveldb_server_config_t *server_config;
+    reveldb_db_config_t     *db_config;
+    reveldb_log_config_t    *log_config;
 };
 
 struct reveldb_server_config_s_ {
-
+    char *host; /* reveldb server host. */
+    char *ports; /* bind port, reveldb can listen on multiple ports. */
+    char *username; /* reveldb root username. */
+    char *password; /* password. */
+    char *datadir; /* data directory. */
+    char *pidfile; /* reveldb server pid file. */
 };
 
 struct reveldb_db_config_s_ {
@@ -42,14 +47,15 @@ struct reveldb_db_config_s_ {
     unsigned block_size; /** block size */
     unsigned int block_restart_interval; /*block restart interval */
     /** compression support, 0: no compression, 1: snappy compression.*/
-    bool compression_support; 
+    bool compression; 
     bool verify_checksums; /** set true to verify checksums when read. */
     bool fill_cache; /** set true if want to fill cache. */
     bool sync; /** set true to enable sync when write. */
 };
 
 struct reveldb_log_config_s_ {
-    
+    char *level; /* reveldb log level. */
+    char *stream; /* log stream: stdout, stderr or file. */
 };
 
-#endif // _CONFIG_H_
+#endif // _XCONFIG_H_

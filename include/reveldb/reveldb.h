@@ -22,7 +22,7 @@
 #include <leveldb/c.h>
 
 #include "rbtree.h"
-#include "config.h"
+#include "xconfig.h"
 
 typedef struct xleveldb_config_s_ xleveldb_config_t;
 typedef struct xleveldb_instance_s_ xleveldb_instance_t;

@@ -1,7 +1,7 @@
 {
     "server": {
         "host": "0.0.0.0",
-        "port": "8087, 8088",
+        "ports": "8087, 8088",
         "username": "root",
         "password": "root",
         "datadir": "/tmp/reveldb/",

@@ -69,8 +69,6 @@ tinydb_jsonfy_error_response(const char *err, const char *msg)
 static void
 URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
 {
-    assert(userdata != NULL);
-    
     /* json formatted response. */
     char *response = NULL;
 
@@ -119,8 +117,6 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
 {
-    assert(userdata != NULL);
-    
     /* json formatted response. */
     char *response = NULL;
     char *value = NULL;
@@ -183,8 +179,6 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
 {
-    assert(userdata != NULL);
-
     /* json formatted response. */
     char *response = NULL;
 
@@ -236,8 +230,6 @@ URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
 {
-    assert(userdata != NULL);
-
     /* json formatted response. */
     char *response = NULL;
 
@@ -286,8 +278,8 @@ URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
 
 int main(int argc, const char *argv[])
 {
-    const char *dbname = "default";
-    reveldb_t * default_db = reveldb_init(dbname);
+    reveldb_config_t *config = reveldb_config_init("./conf/reveldb.json");
+    reveldb_t * default_db = reveldb_init(config->db_config->dbname);
     reveldb_insert_db(&reveldb, default_db);
 
     evbase_t *evbase = event_base_new();
