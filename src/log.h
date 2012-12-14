@@ -13,50 +13,64 @@
  * =============================================================================
  */
 
-#ifndef _LOG_H_
-#define _LOG_H_
+#ifndef _REVELDB_LOG_H_
+#define _REVELDB_LOG_H_
+
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-enum _log_level_e {
-	// LOG_LEVEL_QUIET = 0,
-	LOG_LEVEL_ERROR = 1,
-	LOG_LEVEL_WARN  = 2,
-	LOG_LEVEL_INFO  = 3,
-	LOG_LEVEL_DEBUG = 4
+typedef struct reveldb_log_s_ reveldb_log_t;
+typedef enum reveldb_log_level_e_ reveldb_log_level_e;
+
+struct reveldb_log_s_ {
+    char *level; /* unused right now. */
+    FILE *stream;
 };
 
-typedef enum _log_level_e log_level_e;
+enum reveldb_log_level_e_ {
+	// reveldb_log_LEVEL_QUIET = 0,
+	REVELDB_LOG_LEVEL_ERROR = 1,
+	REVELDB_LOG_LEVEL_WARN  = 2,
+	REVELDB_LOG_LEVEL_INFO  = 3,
+	REVELDB_LOG_LEVEL_DEBUG = 4
+};
 
-extern log_level_e log_level;
+extern reveldb_log_level_e log_level;
 
-#define LOGSTREAM log_get_stream()
+#define LOGSTREAM reveldb_log_get_stream()
 
-#define LOG_ERROR(x) if (log_level >= LOG_LEVEL_ERROR) \
-    log_message(LOG_LEVEL_ERROR, __LINE__, __func__, log_format_message x)
-#define LOG_WARN(x) if(log_level >= LOG_LEVEL_WARN) \
-    log_message(LOG_LEVEL_WARN, __LINE__, __func__, log_format_message x)
-#define LOG_INFO(x) if(log_level >= LOG_LEVEL_INFO) \
-    log_message(LOG_LEVEL_INFO, __LINE__, __func__, log_format_message x)
-#define LOG_DEBUG(x) if(log_level == LOG_LEVEL_DEBUG) \
-    log_message(LOG_LEVEL_DEBUG, __LINE__, __func__, log_format_message x)
+#define LOG_ERROR(x) if (log_level >= REVELDB_LOG_LEVEL_ERROR) \
+    reveldb_log_message(REVELDB_LOG_LEVEL_ERROR, __LINE__, __func__, reveldb_log_format_message x)
+#define LOG_WARN(x) if(log_level >= REVELDB_LOG_LEVEL_WARN) \
+    reveldb_log_message(REVELDB_LOG_LEVEL_WARN, __LINE__, __func__, reveldb_log_format_message x)
+#define LOG_INFO(x) if(log_level >= REVELDB_LOG_LEVEL_INFO) \
+    reveldb_log_message(REVELDB_LOG_LEVEL_INFO, __LINE__, __func__, reveldb_log_format_message x)
+#define LOG_DEBUG(x) if(log_level == REVELDB_LOG_LEVEL_DEBUG) \
+    reveldb_log_message(REVELDB_LOG_LEVEL_DEBUG, __LINE__, __func__, reveldb_log_format_message x)
 
-extern void log_message(
-		log_level_e level, int line,
+extern void reveldb_log_message(
+		reveldb_log_level_e level, int line,
 		const char* funcname,
 		const char* message);
-extern const char * log_format_message(const char* format, ...);
-extern FILE * log_get_stream(void);
-extern void log_set_stream(FILE *stream);
-extern void log_set_debug_level(log_level_e level);
-extern FILE * log_init(const char *log_conf, const char *level);
-extern void log_free(FILE *file);
+
+extern const char * reveldb_log_format_message(const char* format, ...);
+
+extern FILE * reveldb_log_get_stream(void);
+
+extern void reveldb_log_set_stream(FILE *stream);
+
+extern void reveldb_log_set_debug_level(reveldb_log_level_e level);
+
+extern reveldb_log_t* reveldb_log_init(const char *logfile, const char *level);
+
+extern void reveldb_log_free(reveldb_log_t *log);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /*LOG_H*/
+#endif /* _REVELDB_LOG_H_ */
 

@@ -13,6 +13,7 @@
  * =============================================================================
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -21,6 +22,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <string.h>
+
 #include "log.h"
 
 #define TIME_NOW_BUFFER_SIZE 1024
@@ -29,20 +31,20 @@
 static pthread_key_t time_now_buffer;
 static pthread_key_t format_log_msg_buffer;
 
-void log_free_buffer(void* p)
+void reveldb_log_free_buffer(void* p)
 {
     if (p != NULL) free(p);
 }
 
 __attribute__((constructor)) static void
-log_prepare_tsdkeys(void)
+reveldb_log_prepare_tsdkeys(void)
 {
-    pthread_key_create(&time_now_buffer, log_free_buffer);
-    pthread_key_create(&format_log_msg_buffer, log_free_buffer);
+    pthread_key_create(&time_now_buffer, reveldb_log_free_buffer);
+    pthread_key_create(&format_log_msg_buffer, reveldb_log_free_buffer);
 }
 
 static char *
-log_get_tsdata(pthread_key_t key, int size)
+reveldb_log_get_tsdata(pthread_key_t key, int size)
 {
     char *p = (char *)pthread_getspecific(key);
     if (p == 0) {
@@ -50,44 +52,30 @@ log_get_tsdata(pthread_key_t key, int size)
         p = (char *)calloc(1, size);
         res = pthread_setspecific(key, p);
         if (res != 0) {
-            fprintf(stderr, "log_get_tsdata() failed to set TSD key: %d", res);
+            fprintf(stderr, "reveldb_log_get_tsdata() failed to set TSD key: %d", res);
         }
     }
     return p;
 }
 
 static char *
-log_get_time_buffer(void)
+reveldb_log_get_time_buffer(void)
 {
-    return log_get_tsdata(time_now_buffer, TIME_NOW_BUFFER_SIZE);
+    return reveldb_log_get_tsdata(time_now_buffer, TIME_NOW_BUFFER_SIZE);
 }
 
 static char *
-log_get_format_buffer(void)
+reveldb_log_get_format_buffer(void)
 {  
-    return log_get_tsdata(format_log_msg_buffer, FORMAT_LOG_BUFFER_SIZE);
+    return reveldb_log_get_tsdata(format_log_msg_buffer, FORMAT_LOG_BUFFER_SIZE);
 }
 
-log_level_e log_level = LOG_LEVEL_INFO;
+reveldb_log_level_e log_level = REVELDB_LOG_LEVEL_INFO;
 
 static FILE *log_stream = 0;
 
-FILE *
-log_get_stream(void)
-{
-    if (log_stream == 0)
-        log_stream = stderr;
-    return log_stream;
-}
-
-void
-log_set_stream(FILE *stream)
-{
-    log_stream = stream;
-}
-
 static const char*
-log_time_now(char* now_str)
+reveldb_log_time_now(char* now_str)
 {
     struct timeval tv;
     struct tm lt;
@@ -114,8 +102,22 @@ log_time_now(char* now_str)
     return (const char *)now_str;
 }
 
+FILE *
+reveldb_log_get_stream(void)
+{
+    if (log_stream == 0)
+        log_stream = stderr;
+    return log_stream;
+}
+
 void
-log_message(log_level_e level, int line,
+reveldb_log_set_stream(FILE *stream)
+{
+    log_stream = stream;
+}
+
+void
+reveldb_log_message(reveldb_log_level_e level, int line,
 		const char* funcname, const char* message)
 {
     static const char* level_readable_str[] = {
@@ -124,19 +126,19 @@ log_message(log_level_e level, int line,
     static pid_t pid = 0;
     if(pid == 0) pid = getpid();
     fprintf(LOGSTREAM, "%s:%d(0x%lx):%s@%s@%d: %s\n",
-			log_time_now(log_get_time_buffer()), pid,
+			reveldb_log_time_now(reveldb_log_get_time_buffer()), pid,
             (unsigned long int) pthread_self(),
             level_readable_str[level], funcname, line, message);
 	fflush(LOGSTREAM);
 }
 
 const char *
-log_format_message(const char* format, ...)
+reveldb_log_format_message(const char* format, ...)
 {
     va_list va;
-    char *buf = log_get_format_buffer();
+    char *buf = reveldb_log_get_format_buffer();
     if(buf == NULL)
-        return "log_format_message(): unable to allocate memory buffer\n";
+        return "reveldb_log_format_message(): unable to allocate memory buffer\n";
     
     va_start(va, format);
     vsnprintf(buf, FORMAT_LOG_BUFFER_SIZE - 1, format, va);
@@ -145,47 +147,61 @@ log_format_message(const char* format, ...)
 }
 
 void
-log_set_debug_level(log_level_e level)
+reveldb_log_set_debug_level(reveldb_log_level_e level)
 {
     if (level == 0) {
-        log_level = (log_level_e) 0;
+        log_level = (reveldb_log_level_e) 0;
         return;
     }
-    if (level < LOG_LEVEL_ERROR) level = LOG_LEVEL_ERROR;
-    if (level > LOG_LEVEL_DEBUG) level = LOG_LEVEL_DEBUG;
+    if (level < REVELDB_LOG_LEVEL_ERROR) level = REVELDB_LOG_LEVEL_ERROR;
+    if (level > REVELDB_LOG_LEVEL_DEBUG) level = REVELDB_LOG_LEVEL_DEBUG;
 
     log_level = level;
 }
 
-FILE *
-log_init(const char *logfile, const char *level)
+reveldb_log_t *
+reveldb_log_init(const char *logfile, const char *level)
 {
-	FILE *file = fopen(log_conf, "w+");
+    reveldb_log_t *log = (reveldb_log_t *)malloc(sizeof(reveldb_log_t));
+    if (log == NULL) {
+        fprintf(stderr, "reveldb_log_init() failed to malloc.\n");
+        return NULL;
+    }
+	FILE *file = fopen(logfile, "w+");
 	if (file == NULL) {
 		fprintf(stderr, "failed to open log conf.\n");
+        free(log);
 		return NULL;
 	}
-	log_set_stream(file);
 
-	if (strcmp(level, "LOG_LEVEL_DEBUG") == 0) {
-		log_set_debug_level(LOG_LEVEL_DEBUG);
-	} else if (strcmp(level, "LOG_LEVEL_INFO")) {
-		log_set_debug_level(LOG_LEVEL_DEBUG);
-	} else if (strcmp(level, "LOG_LEVEL_WARN")) {
-		log_set_debug_level(LOG_LEVEL_WARN);
-	} else if (strcmp(level, "LOG_LEVEL_ERROR")) {
-		log_set_debug_level(LOG_LEVEL_ERROR);
+    log->stream = file;
+	reveldb_log_set_stream(file);
+
+	if (strcmp(level, "DEBUG") == 0) {
+		reveldb_log_set_debug_level(REVELDB_LOG_LEVEL_DEBUG);
+	} else if (strcmp(level, "INFO")) {
+		reveldb_log_set_debug_level(REVELDB_LOG_LEVEL_INFO);
+	} else if (strcmp(level, "WARN")) {
+		reveldb_log_set_debug_level(REVELDB_LOG_LEVEL_WARN);
+	} else if (strcmp(level, "ERROR")) {
+		reveldb_log_set_debug_level(REVELDB_LOG_LEVEL_ERROR);
 	} else {
-		log_set_debug_level(LOG_LEVEL_DEBUG);
+		reveldb_log_set_debug_level(REVELDB_LOG_LEVEL_DEBUG);
 	}
 
-	return file;
+	return log;
 }
 
 void
-log_free(FILE *file)
+reveldb_log_free(reveldb_log_t *log)
 {
-	fclose(file);
+    assert(log != NULL);
+    if (log->stream != NULL) {
+        fclose(log->stream);
+        log->stream = NULL;
+    }
+
+    free(log);
 }
 
 #if defined(_LOG_TEST_)
@@ -202,17 +218,22 @@ void * dummy(void *arg)
 int main(int argc, const char *argv[])
 {
 	pthread_t thread;
-	FILE *file = fopen("queryclient.log", "w+");
-	log_set_stream(file);
-	log_set_debug_level(LOG_LEVEL_DEBUG);
-
+    reveldb_log_t *log = reveldb_log_init("reveldb.log", "DEBUG");
+#if 0
+	FILE *file = fopen("reveldb.log", "w+");
+	reveldb_log_set_stream(file);
+	reveldb_log_set_debug_level(REVELDB_LOG_LEVEL_DEBUG);
+#endif
 	LOG_DEBUG(("hello world, This is debug level."));
 	LOG_INFO(("hello world, This is info level."));
 	LOG_WARN(("hello world, This is warn level."));
 	LOG_ERROR(("hello world, This is error level."));
 	pthread_create(&thread, NULL, dummy, NULL);
 	pthread_join(thread, NULL);
+    reveldb_log_free(log);
+#if 0
 	fclose(file);
+#endif
 }
 
 #endif
