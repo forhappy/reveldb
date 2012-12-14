@@ -22,6 +22,8 @@
 
 #include "tstring.h"
 
+#define _GNU_SOURCE
+
 #ifdef HAVE_STDBOOL_H
   #include <stdbool.h>
   #define TRUE true

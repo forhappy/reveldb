@@ -58,4 +58,7 @@ struct reveldb_log_config_s_ {
     char *stream; /* log stream: stdout, stderr or file. */
 };
 
+extern reveldb_config_t * reveldb_config_init(const char *file);
+void reveldb_config_fini(reveldb_config_t *config);
+
 #endif // _XCONFIG_H_

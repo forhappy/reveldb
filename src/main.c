@@ -22,6 +22,10 @@
 #include <reveldb/reveldb.h>
 #include <evhttpx/evhttpx.h>
 
+#include "log.h"
+#include "xconfig.h"
+
+reveldb_log_t *reveldb_log = NULL;
 struct rb_root reveldb = RB_ROOT;
 
 #define REVELDB_MAX_KV_RESPONSE_BUFFER_SIZE (1024 * 1024 *2)
@@ -279,8 +283,12 @@ URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
 int main(int argc, const char *argv[])
 {
     reveldb_config_t *config = reveldb_config_init("./conf/reveldb.json");
+    reveldb_log = reveldb_log_init(config->log_config->stream,
+            config->log_config->level);
     reveldb_t * default_db = reveldb_init(config->db_config->dbname);
     reveldb_insert_db(&reveldb, default_db);
+
+    LOG_DEBUG(("initializing reveldb server..."));
 
     evbase_t *evbase = event_base_new();
     evhttpx_t *httpx = evhttpx_new(evbase, NULL);
@@ -297,6 +305,9 @@ int main(int argc, const char *argv[])
     evhttpx_bind_socket(httpx, "0.0.0.0", 8088, 1024);
 
     event_base_loop(evbase, 0);
+
+    reveldb_log_free(reveldb_log);
+    reveldb_config_fini(config);
 
     evhttpx_unbind_socket(httpx);
     evhttpx_callback_free(rpc_new_cb);
