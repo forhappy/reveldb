@@ -212,7 +212,7 @@ status_code_to_str(evhttpx_res code)
 }
 
 /**
- * @brief callback definitions for request processing from libhtparse
+ * @brief callback definitions for request processing from http_parser
  */
 static http_parse_hooks_t request_psets = {
     .on_msg_begin       = _evhttpx_request_parser_start,
@@ -1154,7 +1154,7 @@ _evhttpx_request_parser_headers(http_parser_t * p)
 {
     evhttpx_connection_t * c = http_parser_get_userdata(p);
 
-    /* XXX proto should be set with htparsers on_hdrs_begin hook */
+    /* XXX proto should be set with http_parser on_hdrs_begin hook */
     c->request->keepalive = http_parser_should_keep_alive(p);
     c->request->proto     = _evhttpx_protocol(http_parser_get_major(p), http_parser_get_minor(p));
     c->request->status    = _evhttpx_headers_hook(c->request, c->request->headers_in);
@@ -1538,9 +1538,9 @@ _evhttpx_connection_writecb(evbev_t * bev, void * arg)
              * reset our connections evhttpx_t structure back to the original so
              * that subsequent requests can have a different Host: header.
              */
-            evhttpx_t * orig_htp = c->httpx->parent;
+            evhttpx_t * orig_httpx = c->httpx->parent;
 
-            c->httpx = orig_htp;
+            c->httpx = orig_httpx;
         }
 
         http_parser_init(c->parser, httpx_type_request);

@@ -119,7 +119,7 @@ typedef enum evhttpx_callback_type   evhttpx_callback_type;
 typedef enum evhttpx_proto           evhttpx_proto;
 typedef enum evhttpx_ssl_scache_type evhttpx_ssl_scache_type;
 
-typedef void (*evhttpx_thread_init_cb)(evhttpx_t * htp, evthr_t * thr, void * arg);
+typedef void (*evhttpx_thread_init_cb)(evhttpx_t * httpx, evthr_t * thr, void * arg);
 typedef void (*evhttpx_callback_cb)(evhttpx_request_t * req, void * arg);
 typedef void (*evhttpx_hook_err_cb)(evhttpx_request_t * req, evhttpx_error_flags errtype, void * arg);
 
@@ -148,7 +148,7 @@ typedef int (*evhttpx_ssl_verify_cb)(int pre_verify, evhttpx_x509_store_ctx_t * 
 typedef int (*evhttpx_ssl_chk_issued_cb)(evhttpx_x509_store_ctx_t * ctx, evhttpx_x509_t * x, evhttpx_x509_t * issuer);
 
 typedef int (*evhttpx_ssl_scache_add)(evhttpx_connection_t * connection, unsigned char * sid, int sid_len, evhttpx_ssl_sess_t * sess);
-typedef void (*evhttpx_ssl_scache_del)(evhttpx_t * htp, unsigned char * sid, int sid_len);
+typedef void (*evhttpx_ssl_scache_del)(evhttpx_t * httpx, unsigned char * sid, int sid_len);
 typedef evhttpx_ssl_sess_t * (*evhttpx_ssl_scache_get)(evhttpx_connection_t * connection, unsigned char * sid, int sid_len);
 typedef void * (*evhttpx_ssl_scache_init)(evhttpx_t *);
 
@@ -479,7 +479,7 @@ struct evhttpx_ssl_cfg_s {
  * @return a new evhttpx_t structure or NULL on error
  */
 evhttpx_t * evhttpx_new(evbase_t * evbase, void * arg);
-void      evhttpx_free(evhttpx_t * evhtp);
+void      evhttpx_free(evhttpx_t * evhttpx);
 
 
 /**
@@ -487,63 +487,63 @@ void      evhttpx_free(evhttpx_t * evhtp);
  *        expires your error hook will be called with the libevent supplied event
  *        flags.
  *
- * @param htp the base evhttpx_t struct
+ * @param httpx the base evhttpx_t struct
  * @param r read-timeout in timeval
  * @param w write-timeout in timeval.
  */
-void evhttpx_set_timeouts(evhttpx_t * htp, const struct timeval * r, const struct timeval * w);
-void evhttpx_set_bev_flags(evhttpx_t * htp, int flags);
+void evhttpx_set_timeouts(evhttpx_t * httpx, const struct timeval * r, const struct timeval * w);
+void evhttpx_set_bev_flags(evhttpx_t * httpx, int flags);
 int  evhttpx_ssl_use_threads(void);
-int  evhttpx_ssl_init(evhttpx_t * htp, evhttpx_ssl_cfg_t * ssl_cfg);
+int  evhttpx_ssl_init(evhttpx_t * httpx, evhttpx_ssl_cfg_t * ssl_cfg);
 
 
 /**
  * @brief creates a lock around callbacks and hooks, allowing for threaded
  * applications to add/remove/modify hooks & callbacks in a thread-safe manner.
  *
- * @param htp
+ * @param httpx
  *
  * @return 0 on success, -1 on error
  */
-int evhttpx_use_callback_locks(evhttpx_t * htp);
+int evhttpx_use_callback_locks(evhttpx_t * httpx);
 
 /**
  * @brief sets a callback which is called if no other callbacks are matched
  *
- * @param htp the initialized evhttpx_t
+ * @param httpx the initialized evhttpx_t
  * @param cb  the function to be executed
  * @param arg user-defined argument passed to the callback
  */
-void evhttpx_set_gencb(evhttpx_t * htp, evhttpx_callback_cb cb, void * arg);
-void evhttpx_set_pre_accept_cb(evhttpx_t * htp, evhttpx_pre_accept_cb, void * arg);
-void evhttpx_set_post_accept_cb(evhttpx_t * htp, evhttpx_post_accept_cb, void * arg);
+void evhttpx_set_gencb(evhttpx_t * httpx, evhttpx_callback_cb cb, void * arg);
+void evhttpx_set_pre_accept_cb(evhttpx_t * httpx, evhttpx_pre_accept_cb, void * arg);
+void evhttpx_set_post_accept_cb(evhttpx_t * httpx, evhttpx_post_accept_cb, void * arg);
 
 
 /**
  * @brief sets a callback to be executed on a specific path
  *
- * @param htp the initialized evhttpx_t
+ * @param httpx the initialized evhttpx_t
  * @param path the path to match
  * @param cb the function to be executed
  * @param arg user-defined argument passed to the callback
  *
  * @return evhttpx_callback_t * on success, NULL on error.
  */
-evhttpx_callback_t * evhttpx_set_cb(evhttpx_t * htp, const char * path, evhttpx_callback_cb cb, void * arg);
+evhttpx_callback_t * evhttpx_set_cb(evhttpx_t * httpx, const char * path, evhttpx_callback_cb cb, void * arg);
 
 /**
  * @brief sets a callback to to be executed on simple glob/wildcard patterns
  *        this is useful if the app does not care about what was matched, but
  *        just that it matched. This is technically faster than regex.
  *
- * @param htp
+ * @param httpx
  * @param pattern wildcard pattern, the '*' can be set at either or both the front or end.
  * @param cb
  * @param arg
  *
  * @return
  */
-evhttpx_callback_t * evhttpx_set_glob_cb(evhttpx_t * htp, const char * pattern, evhttpx_callback_cb cb, void * arg);
+evhttpx_callback_t * evhttpx_set_glob_cb(evhttpx_t * httpx, const char * pattern, evhttpx_callback_cb cb, void * arg);
 
 /**
  * @brief sets a callback hook for either a connection or a path/regex .
@@ -563,13 +563,13 @@ evhttpx_callback_t * evhttpx_set_glob_cb(evhttpx_t * htp, const char * pattern, 
  *
  * per-callback example:
  *
- * evhttpx_callback_t * cb = evhttpx_set_regex_cb(htp, "/anything/(.*)", default_cb, NULL);
+ * evhttpx_callback_t * cb = evhttpx_set_regex_cb(httpx, "/anything/(.*)", default_cb, NULL);
  *
  * evhttpx_set_hook(&cb->hooks, evhttpx_hook_on_headers, anything_headers_cb, NULL);
  *
  * evhttpx_set_hook(&cb->hooks, evhttpx_hook_on_fini, anything_fini_cb, NULL);
  *
- * With the above example, once libevhtp has determined that it has a user-defined
+ * With the above example, once libevhttpx has determined that it has a user-defined
  * callback for /anything/.*; anything_headers_cb will be executed after all headers
  * have been parsed, and anything_fini_cb will be executed before the request is
  * free()'d.
@@ -616,36 +616,36 @@ int evhttpx_unset_all_hooks(evhttpx_hooks_t ** hooks);
  *          ipv4:<ipv4addr> for binding to an ipv4 address
  *        Otherwise the addr is assumed to be ipv4.
  *
- * @param htp
+ * @param httpx
  * @param addr
  * @param port
  * @param backlog
  *
  * @return
  */
-int evhttpx_bind_socket(evhttpx_t * htp, const char * addr, uint16_t port, int backlog);
+int evhttpx_bind_socket(evhttpx_t * httpx, const char * addr, uint16_t port, int backlog);
 
 
 /**
  * @brief stops the listening socket.
  *
- * @param htp
+ * @param httpx
  */
-void evhttpx_unbind_socket(evhttpx_t * htp);
+void evhttpx_unbind_socket(evhttpx_t * httpx);
 
 /**
  * @brief bind to an already allocated sockaddr.
  *
- * @param htp
+ * @param httpx
  * @param
  * @param sin_len
  * @param backlog
  *
  * @return
  */
-int  evhttpx_bind_sockaddr(evhttpx_t * htp, struct sockaddr *, size_t sin_len, int backlog);
+int  evhttpx_bind_sockaddr(evhttpx_t * httpx, struct sockaddr *, size_t sin_len, int backlog);
 
-int  evhttpx_use_threads(evhttpx_t * htp, evhttpx_thread_init_cb init_cb, int nthreads, void * arg);
+int  evhttpx_use_threads(evhttpx_t * httpx, evhttpx_thread_init_cb init_cb, int nthreads, void * arg);
 void evhttpx_send_reply(evhttpx_request_t * request, evhttpx_res code);
 void evhttpx_send_reply_start(evhttpx_request_t * request, evhttpx_res code);
 void evhttpx_send_reply_body(evhttpx_request_t * request, evbuf_t * buf);
@@ -727,13 +727,13 @@ int evhttpx_callbacks_add_callback(evhttpx_callbacks_t * cbs, evhttpx_callback_t
  *        on the base evhttpx_t and your version of OpenSSL supports SNI, the SNI
  *        hostname will always take precedence over the Host header value.
  *
- * @param evhtp
+ * @param evhttpx
  * @param name
  * @param vhost
  *
  * @return
  */
-int evhttpx_add_vhost(evhttpx_t * evhtp, const char * name, evhttpx_t * vhost);
+int evhttpx_add_vhost(evhttpx_t * evhttpx, const char * name, evhttpx_t * vhost);
 
 
 /**
@@ -741,12 +741,12 @@ int evhttpx_add_vhost(evhttpx_t * evhtp, const char * name, evhttpx_t * vhost);
  *        having multiple evhttpx_t virtual hosts with the same callback for the same
  *        vhost.
  *
- * @param evhtp
+ * @param evhttpx
  * @param name
  *
  * @return
  */
-int evhttpx_add_alias(evhttpx_t * evhtp, const char * name);
+int evhttpx_add_alias(evhttpx_t * evhttpx, const char * name);
 
 /**
  * @brief Allocates a new key/value structure.
@@ -872,11 +872,11 @@ const char * evhttpx_header_find(evhttpx_headers_t * headers, const char * key);
 
 
 /**
- * @brief returns the htp_method enum version of the request method.
+ * @brief returns the httpx_method enum version of the request method.
  *
  * @param r
  *
- * @return htp_method enum
+ * @return httpx_method enum
  */
 http_method_e evhttpx_request_get_method(evhttpx_request_t * r);
 
@@ -972,10 +972,10 @@ void evhttpx_request_free(evhttpx_request_t * request);
  * @brief set a max body size to accept for an incoming request, this will
  *        default to unlimited.
  *
- * @param htp
+ * @param httpx
  * @param len
  */
-void evhttpx_set_max_body_size(evhttpx_t * htp, uint64_t len);
+void evhttpx_set_max_body_size(evhttpx_t * httpx, uint64_t len);
 
 
 /**
@@ -998,10 +998,10 @@ void evhttpx_request_set_max_body_size(evhttpx_request_t * request, uint64_t len
 /**
  * @brief sets a maximum number of requests that a single connection can make.
  *
- * @param htp
+ * @param httpx
  * @param num
  */
-void evhttpx_set_max_keepalive_requests(evhttpx_t * htp, uint64_t num);
+void evhttpx_set_max_keepalive_requests(evhttpx_t * httpx, uint64_t num);
 
 #ifdef __cplusplus
 }
