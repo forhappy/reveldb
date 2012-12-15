@@ -9,6 +9,7 @@ SET(REVELDB_SRC
     cJSON.c
     xconfig.c
     log.c
+    rpc.c
     rbtree.c
     splaytree.c
     tstring.c

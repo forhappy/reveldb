@@ -24,6 +24,10 @@
 #include "rbtree.h"
 #include "xconfig.h"
 
+#define REVELDB_MAX_KV_RESPONSE_BUFFER_SIZE (1024 * 1024 *2)
+#define REVELDB_MAX_ERROR_RESPONSE_BUFFER_SIZE 1024
+#define REVELDB_RPC_MAX_PORTS_LISTENING_ON 32
+
 typedef struct xleveldb_config_s_ xleveldb_config_t;
 typedef struct xleveldb_instance_s_ xleveldb_instance_t;
 typedef struct reveldb_s_ reveldb_t;
