@@ -19,7 +19,26 @@
 
 #include "log.h"
 #include "rpc.h"
+#include "cJSON.h"
+#include "tstring.h"
 #include "main.h"
+
+static int
+_rpc_parse_request_header(evhttpx_header_t *header, void *arg)
+{
+    evbuf_t * buf = (evbuf_t *)arg;
+    evbuffer_add_printf(buf, "Key = '%s', Value = '%s'\n",
+                        header->key, header->val);
+    return 0;
+}
+
+static evhttpx_res
+_rpc_print_request_kv_pairs(evhttpx_request_t *req, evhttpx_headers_t *hdrs, void *arg)
+{
+    evhttpx_headers_for_each(hdrs, _rpc_parse_request_header, req->buffer_out);
+    return EVHTTPX_RES_OK;
+}
+
 static char *
 _rpc_jsonfy_kv_response(const char *key, const char *val)
 {
@@ -54,11 +73,36 @@ _rpc_jsonfy_error_response(const char *err, const char *msg)
     return response;
 }
 
+static char *
+jsonfy_response_on_error()
+{
+    return NULL;
+}
+
 static void 
 URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
     char *response = NULL;
+
+	/* request URI information. */
+	evhttpx_uri_t *uri = req->uri;
+	/* request query pairs. */
+	evhttpx_query_t *uri_query = uri->query;
+	/* request headers from client */
+	evhttpx_headers_t *request_headers = req->headers_in;
+	/* response headers to client */
+	evhttpx_headers_t *response_headers = req->headers_out;
+	/* buffer containing data from client */
+	evbuf_t *buffer_in = req->buffer_in;
+    
+    evbuffer_add_printf(req->buffer_out, "Protocal: %d\n", req->proto);
+    evbuffer_add_printf(req->buffer_out, "Method: %d\n", req->method);
+    evbuffer_add_printf(req->buffer_out, "Status: %d\n", req->status);
+    evbuffer_add_printf(req->buffer_out, "Keepalive: %d\n", req->keepalive);
+    evbuffer_add_printf(req->buffer_out, "Finished: %d\n", req->finished);
+    req->finished = 1;
+    evbuffer_add_printf(req->buffer_out, "Chunked: %d\n", req->chunked);
 
     /* HTTP protocol used */
     evhttpx_proto proto = req->proto;
@@ -81,23 +125,14 @@ URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
 
+	_rpc_print_request_kv_pairs(req, uri_query, NULL);
+	_rpc_print_request_kv_pairs(req, request_headers, NULL);
+	_rpc_print_request_kv_pairs(req, response_headers, NULL);
 
-    /* request query from client */
-    evhttpx_query_t *query = req->uri->query;
-    const char *dbname = evhttpx_kv_find(query, "db");
-    reveldb_t *db = reveldb_init(dbname);
-    reveldb_insert_db(&reveldb, db);
-    if (db != NULL) {
-        response = _rpc_jsonfy_kv_response("OK", "Create new database successfully.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        free(response);
-    } else {
-        response = _rpc_jsonfy_error_response("NoSuchKey", "No such key exists, please check agein.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        free(response);
-    }
+    response = _rpc_jsonfy_error_response("OK", "Reveldb is healthy :-).");
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+    free(response);
 
     return;
 }
@@ -162,7 +197,7 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
         evhttpx_send_reply(req, EVHTTPX_RES_OK);
         free(response);
     } else {
-        response = _rpc_jsonfy_error_response("NoSuchKey", "No such key exists, please check agein.");
+        response = _rpc_jsonfy_error_response("NewDBError", "failed to create new leveldb instance.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_OK);
         free(response);
