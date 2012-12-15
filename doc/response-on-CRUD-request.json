@@ -1,0 +1,120 @@
+////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+{ // response on set(C) operation,
+  //if request with argument(quiet = 1)
+    "code": 200
+}
+{ // response on set(C) operation.
+    "code": 200,
+    "status": "OK",
+    "message": "Set key done.",
+    "date": "2012-12-12 12:12:12",
+    "key": { // echoed key-value pair from reveldb, optional
+        "key": "hello",
+        "md5": "sdfAjdk132kfiow3sdDkoewijS" // md5(key+value)
+    }
+}
+////////////////////////////////////////////////////////////
+{ // response on mset(C) operation.
+    "code": 200,
+    "status": "OK",
+    "message": "Set key done.",
+    "date": "2012-12-12 12:12:12",
+    "keys": { // echoed key from reveldb, optional
+        "keys": ["hello","hi"],
+        "md5": "sdfAjdk132kfiow3sdDkoewijS" // md5(key+value)
+    }
+}
+
+
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+{ // response on get(R) operation,
+  //if request with argument(quiet = 1)
+    "code": 200,
+    "kv": {
+        "key": "hello",
+        "value": "world"
+    }
+}
+{ // response on mget(R) operation,
+  //if request with argument(quiet = 1)
+    "code": 200,
+    "kvs": {
+        "keys": ["hello", "hi"],
+        "values": ["world", "waaaho"]
+    }
+}
+{ // response on get(R) operation.
+    "code": 200,
+    "status": "OK",
+    "message": "Set key done.",
+    "date": "2012-12-12 12:12:12",
+    "kv": {
+        "key": "hello",
+        "value": "world",
+        "md5": "sdfAjdk132kfiow3sdDkoewijS" // md5(key+value)
+    }
+}
+////////////////////////////////////////////////////////////
+{ // response on mget(R) operation.
+    "code": 200,
+    "status": "OK",
+    "message": "Set key done.",
+    "date": "2012-12-12 12:12:12",
+    "kvs": {
+        "keys": ["hello","hi"],
+        "values": ["world", "what"],
+        "md5": ["sdfAjdk132kfiow3sdDkoewijsssewgS", "asdfsdfskdfjlaksiowerujakfkdfsas"] // md5(key+value)
+    }
+}
+
+
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+{ // response on incr(U) operation,
+  //if request with argument(quiet = 1)
+    "code": 200
+}
+}
+{ // response on incr(U) operation.
+    "code": 200,
+    "status": "OK",
+    "message": "incr key done.",
+    "date": "2012-12-12 12:12:12",
+    "kv": {
+        "key": "hello",
+        "value": "world",
+        "md5": "sdfAjdk132kfiow3sdDkoewijS" // md5(key+value)
+    }
+}
+
+
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+{ // response on del(D) operation,
+  //if request with argument(quiet = 1)
+    "code": 204
+}
+{ // response on del(D) operation.
+    "code": 204,
+    "status": "OK",
+    "message": "Delete key done.",
+    "date": "2012-12-12 12:12:12",
+    "key": "hello"
+}
+////////////////////////////////////////////////////////////
+{ // response on mdel(D) operation.
+    "code": 204,
+    "status": "OK",
+    "message": "Delete key done.",
+    "date": "2012-12-12 12:12:12",
+    "keys": ["hello","hi"]
+}

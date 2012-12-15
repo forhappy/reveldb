@@ -1,0 +1,19 @@
+{
+    "code": 404, // HTTP Code
+    "status": "Not Found", // description
+    "message": "Key does not exists.", // more detailed description.
+    "date": "2012-12-12 12:12:12",
+    "request": { // request info, optional
+        "headers": { // standard HTTP request headers, optional
+            "Host": "http://www.example.com:8088",
+            "User-Agent": "Mozilla/5.0...",
+            "Other-Headers": "Values",
+        },
+        "arguments": { // user arguments, optional
+            "key": "hello",
+            "db": "default",
+            "expires": "3600",
+            "others": "values"
+        }
+    }
+}
