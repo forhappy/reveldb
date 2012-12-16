@@ -19,7 +19,7 @@
 #include <string.h>
 
 #include <reveldb/reveldb.h>
-#include "rbtree.h"
+#include <reveldb/util/rbtree.h>
 
 xleveldb_config_t *
 xleveldb_config_init(const char* dbname)

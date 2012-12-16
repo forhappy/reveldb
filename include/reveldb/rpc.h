@@ -15,7 +15,6 @@
 #ifndef _REVELDB_RPC_H_
 #define _REVELDB_RPC_H_
 
-#include <evhttpx/evhttpx.h>
 #include <reveldb/reveldb.h>
 
 typedef struct reveldb_rpc_callbacks_s_ reveldb_rpc_callbacks_t;

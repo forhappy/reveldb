@@ -20,12 +20,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "xconfig.h"
+#include <reveldb/util/xconfig.h>
+
 #include "cJSON.h"
 #include "log.h"
 
 static char *
-_load_config_body(const char *filename)
+_xconfig_load_config_body(const char *filename)
 {
     assert(filename != NULL);
     int err = -1;
@@ -68,7 +69,7 @@ _load_config_body(const char *filename)
 }
 
 static reveldb_config_t *
-_init_internal_config(const char *config)
+_xconfig_init_internal_config(const char *config)
 {
     assert(config != NULL);
 
@@ -244,9 +245,9 @@ reveldb_config_init(const char *file)
     assert(file != NULL);
 
     reveldb_config_t * reveldb_config = NULL;
-    char *json_buf = _load_config_body(file);
+    char *json_buf = _xconfig_load_config_body(file);
 
-    reveldb_config = _init_internal_config(json_buf);
+    reveldb_config = _xconfig_init_internal_config(json_buf);
 
     free(json_buf);
     return reveldb_config;
@@ -255,5 +256,55 @@ reveldb_config_init(const char *file)
 void
 reveldb_config_fini(reveldb_config_t *config)
 {
-    // TODO: free it.
+    assert(config != NULL);
+
+    if (config->server_config != NULL) {
+        if (config->server_config->host != NULL) {
+            free(config->server_config->host);
+            config->server_config->host = NULL;
+        }
+        if (config->server_config->ports != NULL) {
+            free(config->server_config->ports);
+            config->server_config->ports = NULL;
+        }
+        if (config->server_config->username != NULL) {
+            free(config->server_config->username);
+            config->server_config->username = NULL;
+        }
+        if (config->server_config->password != NULL) {
+            free(config->server_config->password);
+            config->server_config->password = NULL;
+        }
+        if (config->server_config->datadir != NULL) {
+            free(config->server_config->datadir);
+            config->server_config->datadir = NULL;
+        }
+        if (config->server_config->pidfile != NULL) {
+            free(config->server_config->pidfile);
+            config->server_config->pidfile = NULL;
+        }
+        free(config->server_config);
+    }
+
+    if (config->db_config != NULL) { 
+        if (config->db_config->dbname != NULL) {
+            free(config->db_config->dbname);
+            config->db_config->dbname = NULL;
+        }
+        free(config->db_config);
+    }
+    
+    if (config->log_config != NULL) {
+        if (config->log_config->level != NULL) {
+            free(config->log_config->level);
+            config->log_config->level = NULL;
+        }
+        if (config->log_config->stream != NULL) {
+            free(config->log_config->stream);
+            config->log_config->stream = NULL;
+        }
+        free(config->log_config);
+    }
+
+    free(config);
 }

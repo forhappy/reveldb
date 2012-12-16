@@ -21,8 +21,9 @@
 
 #include <leveldb/c.h>
 
-#include "rbtree.h"
-#include "xconfig.h"
+#include <reveldb/util/evhttpx.h>
+#include <reveldb/util/rbtree.h>
+#include <reveldb/util/xconfig.h>
 
 #define REVELDB_MAX_KV_RESPONSE_BUFFER_SIZE (1024 * 1024 *2)
 #define REVELDB_MAX_ERROR_RESPONSE_BUFFER_SIZE 1024

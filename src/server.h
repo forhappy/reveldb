@@ -15,7 +15,8 @@
 #ifndef REVELDB_MAIN_H
 #define REVELDB_MAIN_H
 
-#include "rpc.h"
+#include <reveldb/rpc.h>
+
 extern struct rb_root reveldb;
 
 #endif // REVELDB_MAIN_H

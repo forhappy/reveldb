@@ -16,7 +16,8 @@
 #include <arpa/inet.h>
 
 #include <sys/tree.h>
-#include <evhttpx/evhttpx.h>
+
+#include <reveldb/util/evhttpx.h>
 
 static int _evhttpx_request_parser_start(http_parser_t * p);
 static int _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len);

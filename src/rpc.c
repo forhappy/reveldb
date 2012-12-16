@@ -17,11 +17,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <reveldb/rpc.h>
+
 #include "log.h"
-#include "rpc.h"
 #include "cJSON.h"
 #include "tstring.h"
-#include "main.h"
+#include "server.h"
 
 static int
 _rpc_parse_request_header(evhttpx_header_t *header, void *arg)

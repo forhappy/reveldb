@@ -36,7 +36,7 @@
   linux/lib/rbtree.c
 */
 
-#include "rbtree.h"
+#include <reveldb/util/rbtree.h>
 
 static void __rb_rotate_left(struct rb_node *node, struct rb_root *root)
 {

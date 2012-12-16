@@ -15,9 +15,9 @@
 
 #include <sys/queue.h>
 #ifndef EVHTTPX_DISABLE_EVTHR
-#include <evthr/evthr.h>
+#include <reveldb/util/evthr.h>
 #endif
-#include <httpparser/http-parser.h>
+#include <reveldb/util/http-parser.h>
 
 #ifdef __cplusplus
 extern "C" {

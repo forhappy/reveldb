@@ -20,11 +20,9 @@
 #include <leveldb/c.h>
 
 #include <reveldb/reveldb.h>
-#include <evhttpx/evhttpx.h>
+#include <reveldb/rpc.h>
 
 #include "log.h"
-#include "rpc.h"
-#include "xconfig.h"
 
 reveldb_log_t *reveldb_log = NULL;
 struct rb_root reveldb = RB_ROOT;
