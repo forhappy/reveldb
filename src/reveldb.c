@@ -22,8 +22,11 @@
 #include <reveldb/engine/xleveldb.h>
 #include <reveldb/util/rbtree.h>
 
+#include "tstring.h"
+
 reveldb_t * reveldb_init(const char *dbname, reveldb_config_t *config)
 {
+    tstring_t *fullpath = tstring_new("");
     size_t dbname_len = strlen(dbname);
 
     reveldb_t *db = (reveldb_t *)malloc(sizeof(reveldb_t));
@@ -32,11 +35,20 @@ reveldb_t * reveldb_init(const char *dbname, reveldb_config_t *config)
     memset(db->dbname, 0, (dbname_len + 1));
     strncpy(db->dbname, dbname, dbname_len);
 
-    xleveldb_config_t *xleveldb_config = xleveldb_config_init(dbname,
+    if (tstring_data(fullpath)[tstring_size(fullpath) - 1] == '/')
+        tstring_append(fullpath, dbname);
+    else {
+        tstring_append(fullpath, "/");
+        tstring_append(fullpath, dbname); 
+    }
+
+    xleveldb_config_t *xleveldb_config = xleveldb_config_init(tstring_data(fullpath),
             config->db_config);
     xleveldb_instance_t *instance = xleveldb_instance_init(xleveldb_config);
 
     db->instance = instance;
+
+    tstring_free(fullpath);
 
     return db;
 }

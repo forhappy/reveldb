@@ -21,6 +21,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "vasprintf.h"
 #include "tstring.h"
 
 #define _GNU_SOURCE
@@ -48,7 +49,7 @@ typedef int bool_t;
  * Returns: %TRUE if the two keys match
  */
 
-static int
+__attribute__((unused)) static int
 _tstring_equal(const void *v1, const void *v2)
 {
     const char *str1 = v1;
@@ -68,7 +69,7 @@ _tstring_equal(const void *v1, const void *v2)
  *
  * Returns: -1, 0 or 1, if @str1 is <, == or > than @str2.
  */
-static int
+__attribute__((unused)) static int
 _tstring_strcmp(const char *str1, const char *str2)
 {
     if (!str1)
@@ -80,7 +81,7 @@ _tstring_strcmp(const char *str1, const char *str2)
 
 #define MY_MAXSIZE ((unsigned int)-1)
 
-static unsigned int
+__attribute__((unused)) static unsigned int
 _nearest_power(unsigned int base, unsigned int num)
 {
     if (num > MY_MAXSIZE / 2) {
@@ -411,9 +412,8 @@ tstring_insert_len(tstring_t * str, int32_t pos, const char *val,
 
 #define SUB_DELIM_CHARS  "!$&'()*+,;="
 
-__attribute__ ((unused))
-     static int
-       is_valid(char c, const char *reserved_chars_allowed)
+__attribute__((unused)) static int
+is_valid(char c, const char *reserved_chars_allowed)
 {
     if (isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~')
         return TRUE;
@@ -423,9 +423,8 @@ __attribute__ ((unused))
     return FALSE;
 }
 
-__attribute__ ((unused))
-     static int
-       unichar_ok(unsigned int c)
+__attribute__((unused)) static int
+unichar_ok(unsigned int c)
 {
     return (c != (unsigned char) -2) && (c != (unsigned char) -1);
 }
@@ -924,7 +923,7 @@ tstring_append_vprintf(tstring_t * str, const char *format, va_list args)
 
     assert(str != NULL);
     assert(format != NULL);
-    len = vasprintf(&buf, format, args);
+    len = reveldb_vasprintf(&buf, format, args);
     if (len >= 0) {
         _tstring_maybe_expand(str, len);
         memcpy(str->str + str->len, buf, len + 1);

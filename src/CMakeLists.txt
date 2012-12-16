@@ -14,6 +14,7 @@ SET(REVELDB_SRC
     rbtree.c
     splaytree.c
     tstring.c
+    vasprintf.c
     utility.c
     )
 
