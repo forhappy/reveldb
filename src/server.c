@@ -1,7 +1,7 @@
 /*
  * =============================================================================
  *
- *       Filename:  main.c
+ *       Filename:  server.c
  *
  *    Description:  reveldb main routine.
  *
@@ -13,9 +13,12 @@
  * =============================================================================
  */
 #include <assert.h>
+#include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <leveldb/c.h>
 
@@ -23,21 +26,57 @@
 #include <reveldb/rpc.h>
 
 #include "log.h"
+#include "utility.h"
 
 reveldb_log_t *reveldb_log = NULL;
 struct rb_root reveldb = RB_ROOT;
 
+static void
+_server_save_pid(const char *pidfile) {
+    FILE *fp = NULL;
+    
+    if (access(pidfile, F_OK) == 0) {
+        if ((fp = fopen(pidfile, "r")) != NULL) {
+            char buffer[1024];
+            if (fgets(buffer, sizeof(buffer), fp) != NULL) {
+                unsigned int pid;
+                if (safe_strtoul(buffer, &pid) && kill((pid_t)pid, 0) == 0) {
+                    LOG_WARN(("the pid file contained the following (running) pid: %u\n", pid));
+                }
+            }
+            fclose(fp);
+        }
+    }
+
+    if ((fp = fopen(pidfile, "w")) == NULL) {
+        LOG_ERROR(("could not open the pid file %s for writing", pidfile));
+        return;
+    }
+
+    fprintf(fp,"%ld\n", (long)getpid());
+    if (fclose(fp) == -1) {
+        LOG_ERROR(("could not close the pid file %s", pidfile));
+    }
+}
+
+static void
+_server_remove_pidfile(const char *pidfile) {
+  if (pidfile == NULL)
+      return;
+
+  if (unlink(pidfile) != 0) {
+      LOG_ERROR(("could not remove the pid file %s", pidfile));
+  }
+}
+
 int main(int argc, const char *argv[])
 {
-
-    LOG_DEBUG(("loading reveldb configuration..."));
     reveldb_config_t *config = reveldb_config_init("./conf/reveldb.json");
-    LOG_DEBUG(("loading reveldb configuration done!"));
 
-    LOG_DEBUG(("initializing reveldb log submodule..."));
+    _server_save_pid(config->server_config->pidfile);
+
     reveldb_log = reveldb_log_init(config->log_config->stream,
             config->log_config->level);
-    LOG_DEBUG(("initializing reveldb log submodule done!"));
 
     LOG_DEBUG(("initializing default reveldb storage engine..."));
     reveldb_t * default_db = reveldb_init(config->db_config->dbname);
@@ -53,6 +92,7 @@ int main(int argc, const char *argv[])
 
     LOG_DEBUG(("reveldb rpc server is stopping..."));
     reveldb_rpc_stop(rpc);
+    _server_remove_pidfile(config->server_config->pidfile);
     reveldb_log_free(reveldb_log);
     reveldb_config_fini(config);
 

@@ -1,7 +1,7 @@
 /*
  * =============================================================================
  *
- *       Filename:  main.h
+ *       Filename:  server.h
  *
  *    Description:  reveldb main routine.
  *
@@ -12,11 +12,11 @@
  *
  * =============================================================================
  */
-#ifndef REVELDB_MAIN_H
-#define REVELDB_MAIN_H
+#ifndef _REVELDB_SERVER_H_
+#define _REVELDB_SERVER_H_
 
 #include <reveldb/rpc.h>
 
 extern struct rb_root reveldb;
 
-#endif // REVELDB_MAIN_H
+#endif // _REVELDB_SERVER_H__

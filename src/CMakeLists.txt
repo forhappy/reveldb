@@ -4,7 +4,7 @@ SET(REVELDB_SRC
     evhttpx/evhttpx.c
     evhttpx/evthr/evthr.c
     evhttpx/httpparser/http-parser.c
-    main.c
+    server.c
     reveldb.c
     cJSON.c
     xconfig.c
@@ -13,6 +13,7 @@ SET(REVELDB_SRC
     rbtree.c
     splaytree.c
     tstring.c
+    utility.c
     )
 
 ADD_EXECUTABLE(reveldb ${REVELDB_SRC})
