@@ -190,7 +190,7 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
     const char *dbname = evhttpx_kv_find(query, "db");
-    reveldb_t *db = reveldb_init(dbname);
+    reveldb_t *db = reveldb_init(dbname, reveldb_config);
     reveldb_insert_db(&reveldb, db);
     if (db != NULL) {
         response = _rpc_jsonfy_kv_response("OK", "Create new database successfully.");

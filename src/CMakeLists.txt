@@ -4,6 +4,7 @@ SET(REVELDB_SRC
     evhttpx/evhttpx.c
     evhttpx/evthr/evthr.c
     evhttpx/httpparser/http-parser.c
+    engine/xleveldb.c
     server.c
     reveldb.c
     cJSON.c

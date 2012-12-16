@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <signal.h>
 
 #include <leveldb/c.h>
 
@@ -28,8 +30,9 @@
 #include "log.h"
 #include "utility.h"
 
-reveldb_log_t *reveldb_log = NULL;
 struct rb_root reveldb = RB_ROOT;
+reveldb_log_t *reveldb_log = NULL;
+reveldb_config_t *reveldb_config = NULL;
 
 static void
 _server_save_pid(const char *pidfile) {
@@ -71,15 +74,16 @@ _server_remove_pidfile(const char *pidfile) {
 
 int main(int argc, const char *argv[])
 {
-    reveldb_config_t *config = reveldb_config_init("./conf/reveldb.json");
+    reveldb_config = reveldb_config_init("./conf/reveldb.json");
 
-    _server_save_pid(config->server_config->pidfile);
+    _server_save_pid(reveldb_config->server_config->pidfile);
 
-    reveldb_log = reveldb_log_init(config->log_config->stream,
-            config->log_config->level);
+    reveldb_log = reveldb_log_init(reveldb_config->log_config->stream,
+            reveldb_config->log_config->level);
 
     LOG_DEBUG(("initializing default reveldb storage engine..."));
-    reveldb_t * default_db = reveldb_init(config->db_config->dbname);
+    reveldb_t * default_db = reveldb_init(reveldb_config->db_config->dbname,
+            reveldb_config);
     reveldb_insert_db(&reveldb, default_db);
     LOG_DEBUG(("initializing default reveldb storage engine done!"));
 
@@ -92,9 +96,9 @@ int main(int argc, const char *argv[])
 
     LOG_DEBUG(("reveldb rpc server is stopping..."));
     reveldb_rpc_stop(rpc);
-    _server_remove_pidfile(config->server_config->pidfile);
+    _server_remove_pidfile(reveldb_config->server_config->pidfile);
     reveldb_log_free(reveldb_log);
-    reveldb_config_fini(config);
+    reveldb_config_fini(reveldb_config);
 
     LOG_DEBUG(("reveldb rpc server is shutdown!"));
     return 0;
