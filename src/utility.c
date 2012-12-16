@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <time.h>
 
 #include "utility.h"
 
@@ -125,4 +126,21 @@ safe_strtol(const char *str, int32_t * out)
         return true;
     }
     return false;
+}
+
+char *
+gmttime_now()
+{
+	time_t now;
+	struct tm *gmt;
+	char *time_val;
+
+	time(&now);
+	gmt = gmtime(&now);
+
+	time_val = (char *)malloc(sizeof(char) * 64);
+	memset(time_val, '\0', 64);
+
+	strftime(time_val, 64, "%a, %d %b %Y %H:%M:%S GMT", gmt);
+	return time_val;
 }

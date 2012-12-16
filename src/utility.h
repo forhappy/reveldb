@@ -33,4 +33,9 @@ bool safe_strtoll(const char *str, int64_t * out);
 bool safe_strtoul(const char *str, uint32_t * out);
 bool safe_strtol(const char *str, int32_t * out);
 
+/*
+ * Get GMT formatted time.
+ */
+char * gmttime_now(void);
+
 #endif // _REVELDB_UTILITY_H_
