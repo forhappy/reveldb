@@ -26,19 +26,70 @@
 #include "utility.h"
 
 static int
-_rpc_parse_request_header(evhttpx_header_t *header, void *arg)
+_rpc_parse_kv_pairs(evhttpx_kv_t *kv, void *arg)
 {
-    evbuf_t * buf = (evbuf_t *)arg;
-    evbuffer_add_printf(buf, "Key = '%s', Value = '%s'\n",
-                        header->key, header->val);
+    cJSON *root = (cJSON *)arg;
+    unsigned int value = 0;
+    LOG_DEBUG(("key: %s, val: %s\n", kv->key, kv->val));
+    if (strcmp(kv->val, "true") == 0) {
+        cJSON_AddTrueToObject(root, kv->key);
+        return 0;
+    }
+    if (strcmp(kv->val, "false") == 0) {
+        cJSON_AddFalseToObject(root, kv->key);
+        return 0;
+    }
+    if (safe_strtoul(kv->val, &value) == true) {
+        cJSON_AddNumberToObject(root, kv->key, value);
+    } else {
+        cJSON_AddStringToObject(root, kv->key, kv->val);
+    }
+
     return 0;
 }
 
-static evhttpx_res
-_rpc_print_request_kv_pairs(evhttpx_request_t *req, evhttpx_headers_t *hdrs, void *arg)
+static cJSON * 
+_rpc_jsonfy_kv_pairs(evhttpx_kvs_t *kvs)
 {
-    evhttpx_headers_for_each(hdrs, _rpc_parse_request_header, req->buffer_out);
-    return EVHTTPX_RES_OK;
+    cJSON *root = cJSON_CreateObject();
+    evhttpx_kvs_for_each(kvs, _rpc_parse_kv_pairs, root);
+    return root;
+}
+
+static char *
+_rpc_jsonfy_quiet_response(unsigned int code)
+{
+    char *response = (char *)malloc(sizeof(char) * 32);
+    memset(response, 0, 32);
+    sprintf(response, "{\"code\": %d}", code);
+    return response;
+}
+
+static char *
+_rpc_jsonfy_general_response(
+        unsigned int code,
+        const char *status,
+        const char *message)
+{
+    assert(status != NULL);
+    assert(message != NULL);
+
+    char *out = NULL;
+    char *now = gmttime_now();
+
+    cJSON *root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "code", code);
+    cJSON_AddStringToObject(root, "status", status);
+    cJSON_AddStringToObject(root, "message", message);
+    cJSON_AddStringToObject(root, "date", now);
+    // out = cJSON_Print(root);
+    /* unformatted json has less data. */
+    out = cJSON_PrintUnformatted(root);
+
+    free(now);
+    cJSON_Delete(root);
+    return out;
 }
 
 static char *
@@ -96,20 +147,51 @@ _rpc_jsonfy_error_response(const char *err, const char *msg)
 //     }
 // }
 static char *
-_rpc_jsonfy_response_on_error(evhttpx_request_t *req)
+_rpc_jsonfy_response_on_error(evhttpx_request_t *req,
+        unsigned int code,
+        const char *status,
+        const char *message)
 {
-    return NULL;
+    /* json formatted response. */
+    char *now = NULL;
+    char *response = NULL;
+    cJSON *root = NULL;
+    cJSON *request = NULL;
+    /* request headers from client */
+    evhttpx_headers_t *request_headers = req->headers_in;
+    /* request query pairs. */
+    evhttpx_query_t *uri_query = req->uri->query;
+
+    now = gmttime_now();
+
+    root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "code", code);
+    cJSON_AddStringToObject(root, "status", status);
+    cJSON_AddStringToObject(root, "message", message);
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root,"request", request = cJSON_CreateObject());
+    cJSON_AddItemToObject(request,"headers",
+            _rpc_jsonfy_kv_pairs(request_headers));
+    cJSON_AddItemToObject(request,"arguments",
+            _rpc_jsonfy_kv_pairs(uri_query));
+
+    /* unformatted json has less data. */
+    response = cJSON_PrintUnformatted(root);
+
+    cJSON_Delete(root);
+    free(now);
+    return response;
 }
 
 static char *
 _rpc_jsonfy_response_on_sanity_check(
-        unsigned short code,
+        unsigned int code,
         const char *status,
         const char *message)
 {
     assert(status != NULL);
     assert(message != NULL);
-    assert(date != NULL);
+
     char *out = NULL;
     char *now = gmttime_now();
 
@@ -161,7 +243,7 @@ static void
 URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
-    unsigned int code = -1;
+    unsigned int code = 0;
     char *response = NULL;
 
     response = _rpc_sanity_check(req, &code);
@@ -185,20 +267,75 @@ URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_echo_cb(evhttpx_request_t *req, void *userdata)
 {
-	/* request URI information. */
-	evhttpx_uri_t *uri = req->uri;
-	/* request query pairs. */
-	evhttpx_query_t *uri_query = uri->query;
-	/* request headers from client */
-	evhttpx_headers_t *request_headers = req->headers_in;
+    /* json formatted response. */
+    unsigned int code = 0;
+    char *now = NULL;
+    char *response = NULL;
+    cJSON *root = NULL;
+    cJSON *request = NULL;
+    /* request headers from client */
+    evhttpx_headers_t *request_headers = req->headers_in;
+    /* request query pairs. */
+    evhttpx_query_t *uri_query = req->uri->query;
 
-	_rpc_print_request_kv_pairs(req, uri_query, NULL);
-	_rpc_print_request_kv_pairs(req, request_headers, NULL);
+    response = _rpc_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    now = gmttime_now();
+
+    root = cJSON_CreateObject();
+    cJSON_AddNumberToObject(root, "code", 200);
+    cJSON_AddStringToObject(root, "status", "OK");
+    cJSON_AddStringToObject(root, "message",
+            "Reveldb echoed the HTTP headers and query arguments of your request.");
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root,"request", request = cJSON_CreateObject());
+    cJSON_AddItemToObject(request,"headers",
+            _rpc_jsonfy_kv_pairs(request_headers));
+    cJSON_AddItemToObject(request,"arguments",
+            _rpc_jsonfy_kv_pairs(uri_query));
+
+    /* unformatted json has less data. */
+    response = cJSON_PrintUnformatted(root);
+
+    cJSON_Delete(root);
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, code);
+
+    free(now);
+    free(response);
+    return;
 }
 
 static void
 URI_rpc_head_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    char *response = NULL;
+
+    response = _rpc_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    response = _rpc_jsonfy_response_on_sanity_check(
+            200,
+            "OK",
+            "Reveldb RPC is healthy! :-)");
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+    free(response);
+    return;
+}
 
 
 static void
@@ -218,43 +355,39 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
     char *response = NULL;
-
-    /* HTTP protocol used */
-    evhttpx_proto proto = req->proto;
-    if (proto != evhttpx_PROTO_11) {
-        response = _rpc_jsonfy_error_response("ProtocalError",
-                "Protocal error, you may have to use HTTP/1.1 to do request.");
+    unsigned int code = 0;
+    
+    response = _rpc_sanity_check(req, &code);
+    if (response != NULL) {
         evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        evhttpx_send_reply(req, code);
         free(response);
         return;
     }
-    /* request method. */
-    int method= evhttpx_request_get_method(req);
-    if (method != http_method_GET) {
-        response = _rpc_jsonfy_error_response("HTTPMethodError",
-                "HTTP method error, you may have to use GET to do request.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        free(response);
-        return;
-    }
-
 
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
+    const char *quiet = evhttpx_kv_find(query, "quiet");
     const char *dbname = evhttpx_kv_find(query, "db");
+    /* init new leveldb instance and insert into reveldb. */
     reveldb_t *db = reveldb_init(dbname, reveldb_config);
     reveldb_insert_db(&reveldb, db);
+
     if (db != NULL) {
-        response = _rpc_jsonfy_kv_response("OK", "Create new database successfully.");
+        if ((quiet != NULL) 
+                && ((strcmp(quiet, "1") == 0)
+                || (strcmp(quiet, "true") == 0))) {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+        } else response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                "OK", "Create new leveldb instance done.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_OK);
         free(response);
     } else {
-        response = _rpc_jsonfy_error_response("NewDBError", "failed to create new leveldb instance.");
+        response = _rpc_jsonfy_response_on_error(req,
+                500, "Internal Server Error", "Failed to create new leveldb instance.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
         free(response);
     }
 
@@ -286,28 +419,17 @@ static void
 URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
+    unsigned int code = 0;
     char *response = NULL;
+    
+    response = _rpc_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
 
-    /* HTTP protocol used */
-    evhttpx_proto proto = req->proto;
-    if (proto != evhttpx_PROTO_11) {
-        response = _rpc_jsonfy_error_response("ProtocalError",
-                "Protocal error, you may have to use HTTP/1.1 to do request.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        free(response);
-        return;
-    }
-    /* request method. */
-    int method= evhttpx_request_get_method(req);
-    if (method != http_method_GET) {
-        response = _rpc_jsonfy_error_response("HTTPMethodError",
-                "HTTP method error, you may have to use GET to do request.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        free(response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        return;
-    }
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
     const char *key = evhttpx_kv_find(query, "key");
@@ -321,15 +443,19 @@ URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
             value, strlen(value),
             &(db->instance->err));
     if (db->instance->err != NULL) {
-        response = _rpc_jsonfy_error_response("SetKVError", "Set key-value pair error.");
+        response = _rpc_jsonfy_response_on_error(req,
+                500, "Internal Server Error", "Set key-value pair error.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
+        free(response);
     } else {
-        response = _rpc_jsonfy_error_response("OK", "Set key successfully.");
+        response = _rpc_jsonfy_general_response(200, "OK", "Set key-value pair done.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        free(response);
+
     }
 
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
-
-    free(response);
     return;
 }
 
@@ -354,31 +480,18 @@ static void
 URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
+    unsigned int code = 0;
     char *response = NULL;
     char *value = NULL;
-    unsigned int value_len = -1;
-
-    /* HTTP protocol used */
-    evhttpx_proto proto = req->proto;
-    if (proto != evhttpx_PROTO_11) {
-        response = _rpc_jsonfy_error_response("ProtocalError",
-                "Protocal error, you may have to use HTTP/1.1 to do request.");
+    unsigned int value_len = 0;
+    
+    response = _rpc_sanity_check(req, &code);
+    if (response != NULL) {
         evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        evhttpx_send_reply(req, code);
         free(response);
         return;
     }
-    /* request method. */
-    int method= evhttpx_request_get_method(req);
-    if (method != http_method_GET) {
-        response = _rpc_jsonfy_error_response("HTTPMethodError",
-                "HTTP method error, you may have to use GET to do request.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        free(response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        return;
-    }
-
 
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
@@ -403,10 +516,11 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
         free(value);
         free(response);
     } else {
-        response = _rpc_jsonfy_error_response("NoSuchKey", "No such key exists, please check agein.");
+        response = _rpc_jsonfy_response_on_error(req,
+                404, "Not Found", "No such key exists, please check agein.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
         free(response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
     }
 
     return;
@@ -453,29 +567,17 @@ static void
 URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
+    unsigned int code = 0;
     char *response = NULL;
-
-    /* HTTP protocol used */
-    evhttpx_proto proto = req->proto;
-    if (proto != evhttpx_PROTO_11) {
-        response = _rpc_jsonfy_error_response("ProtocalError",
-                "Protocal error, you may have to use HTTP/1.1 to do request.");
+    
+    response = _rpc_sanity_check(req, &code);
+    if (response != NULL) {
         evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        evhttpx_send_reply(req, code);
         free(response);
         return;
     }
-    /* request method. */
-    int method= evhttpx_request_get_method(req);
-    if (method != http_method_GET) {
-        response = _rpc_jsonfy_error_response("HTTPMethodError",
-                "HTTP method error, you may have to use GET to do request.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        free(response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        return;
-    }
-
+   
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
     const char *key = evhttpx_kv_find(query, "key");

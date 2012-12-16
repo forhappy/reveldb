@@ -26,7 +26,11 @@
 
 reveldb_t * reveldb_init(const char *dbname, reveldb_config_t *config)
 {
-    tstring_t *fullpath = tstring_new("");
+    assert(dbname != NULL);
+    assert(config != NULL);
+
+    char *datadir = config->server_config->datadir;
+    tstring_t *fullpath = tstring_new(datadir);
     size_t dbname_len = strlen(dbname);
 
     reveldb_t *db = (reveldb_t *)malloc(sizeof(reveldb_t));
