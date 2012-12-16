@@ -1,3 +1,4 @@
+
 /*
  * =============================================================================
  *
@@ -25,14 +26,15 @@
 #define _GNU_SOURCE
 
 #ifdef HAVE_STDBOOL_H
-  #include <stdbool.h>
-  #define TRUE true
-  #define FALSE false
-  typedef   bool bool_t;
+#include <stdbool.h>
+#define TRUE true
+#define FALSE false
+typedef bool bool_t;
 #else
-  typedef int bool_t;
-  #define TRUE  (1)
-  #define FALSE (!TRUE)
+typedef int bool_t;
+
+#define TRUE  (1)
+#define FALSE (!TRUE)
 #endif
 
 /*
@@ -46,11 +48,12 @@
  * Returns: %TRUE if the two keys match
  */
 
-static int 
+static int
 _tstring_equal(const void *v1, const void *v2)
 {
     const char *str1 = v1;
     const char *str2 = v2;
+
     return strcmp(str1, str2) == 0;
 }
 
@@ -66,7 +69,7 @@ _tstring_equal(const void *v1, const void *v2)
  * Returns: -1, 0 or 1, if @str1 is <, == or > than @str2.
  */
 static int
-_tstring_strcmp (const char *str1, const char *str2)
+_tstring_strcmp(const char *str1, const char *str2)
 {
     if (!str1)
         return -(str1 != str2);
@@ -77,21 +80,22 @@ _tstring_strcmp (const char *str1, const char *str2)
 
 #define MY_MAXSIZE ((unsigned int)-1)
 
-static unsigned int 
-_nearest_power(unsigned int base, unsigned int num)    
+static unsigned int
+_nearest_power(unsigned int base, unsigned int num)
 {
-  if (num > MY_MAXSIZE / 2) {
-      return MY_MAXSIZE;
-  } else {
-      unsigned int n = base;
-      while (n < num)
-          n <<= 1;
-      return n;
-  }
+    if (num > MY_MAXSIZE / 2) {
+        return MY_MAXSIZE;
+    } else {
+        unsigned int n = base;
+
+        while (n < num)
+            n <<= 1;
+        return n;
+    }
 }
 
 static void
-_tstring_maybe_expand(tstring_t *str, int32_t len) 
+_tstring_maybe_expand(tstring_t * str, int32_t len)
 {
     assert(len > 0);
     assert(str != NULL);
@@ -105,12 +109,13 @@ _tstring_maybe_expand(tstring_t *str, int32_t len)
 tstring_t *
 tstring_sized_new(unsigned int default_size)
 {
-    tstring_t *str = (tstring_t *)malloc(sizeof(tstring_t) * 1);
+    tstring_t *str = (tstring_t *) malloc(sizeof(tstring_t) * 1);
+
     assert(str != NULL);
     str->allocated_len = 0;
     str->len = 0;
     str->str = NULL;
-    _tstring_maybe_expand(str, max(default_size, (unsigned int)2));
+    _tstring_maybe_expand(str, max(default_size, (unsigned int) 2));
     str->str[0] = 0;
     return str;
 }
@@ -119,15 +124,17 @@ tstring_t *
 tstring_new(const char *init)
 {
     tstring_t *str;
+
     if (init == NULL || *init == '\0')
         str = tstring_sized_new(2);
     else {
-      int len = strlen(init);
-      str = tstring_sized_new(len + 2);
+        int len = strlen(init);
 
-      tstring_append_len(str, init, len);
+        str = tstring_sized_new(len + 2);
+
+        tstring_append_len(str, init, len);
     }
-  return str;
+    return str;
 }
 
 /*
@@ -146,11 +153,12 @@ tstring_new(const char *init)
  * Returns: a new #tstring_t
  */
 tstring_t *
-tstring_new_len(const char *init, int32_t len) 
+tstring_new_len(const char *init, int32_t len)
 {
     tstring_t *str;
-    if (len < 0) 
-      return tstring_new(init);
+
+    if (len < 0)
+        return tstring_new(init);
     else {
         str = tstring_sized_new(len);
         if (init != NULL)
@@ -171,7 +179,7 @@ tstring_new_len(const char *init, int32_t len)
  *          (i.e. %NULL if @free_segment is %TRUE)
  */
 void
-tstring_free(tstring_t *str)
+tstring_free(tstring_t * str)
 {
     if (str != NULL) {
         if (str->str != NULL) {
@@ -194,16 +202,16 @@ tstring_free(tstring_t *str)
  *   same bytes
  */
 int
-tstring_equal(const tstring_t *v, const tstring_t *v2)
+tstring_equal(const tstring_t * v, const tstring_t * v2)
 {
     char *p, *q;
-    tstring_t *str1 = (tstring_t *)v;
-    tstring_t *str2 = (tstring_t *)v2;
+    tstring_t *str1 = (tstring_t *) v;
+    tstring_t *str2 = (tstring_t *) v2;
     unsigned int i = str1->len;
-    
+
     if (i != str2->len)
         return FALSE;
-    
+
     p = str1->str;
     q = str2->str;
     while (i) {
@@ -224,13 +232,15 @@ tstring_equal(const tstring_t *v, const tstring_t *v2)
  *
  * Returns: hash code for @str
  */
+
 /* 31 bit hash function */
 unsigned int
-tstring_hash(const tstring_t *str)
+tstring_hash(const tstring_t * str)
 {
     const char *p = str->str;
     unsigned int n = str->len;
     unsigned int h = 0;
+
     while (n--) {
         h = (h << 5) - h + *p;
         p++;
@@ -252,14 +262,16 @@ tstring_hash(const tstring_t *str)
  * Returns: @str
  */
 tstring_t *
-tstring_assign(tstring_t *str, const char *rval)
+tstring_assign(tstring_t * str, const char *rval)
 {
     assert(rval != NULL);
     assert(str != NULL);
-    /* Make sure assigning to itself doesn't corrupt the string.  */
+    /*
+       Make sure assigning to itself doesn't corrupt the string.  
+     */
     if (str->str != rval) {
-      tstring_truncate(str, 0);
-      tstring_append(str, rval);
+        tstring_truncate(str, 0);
+        tstring_append(str, rval);
     }
     return str;
 }
@@ -274,10 +286,10 @@ tstring_assign(tstring_t *str, const char *rval)
  * Returns: @str
  */
 tstring_t *
-tstring_truncate(tstring_t *str, int32_t len)    
+tstring_truncate(tstring_t * str, int32_t len)
 {
     assert(str != NULL);
-    str->len = min(len, (int32_t)(str->len));
+    str->len = min(len, (int32_t) (str->len));
     str->str[str->len] = 0;
     return str;
 }
@@ -296,13 +308,13 @@ tstring_truncate(tstring_t *str, int32_t len)
  * Return value: @str
  **/
 tstring_t *
-tstring_set_size(tstring_t *str, int32_t len)    
+tstring_set_size(tstring_t * str, int32_t len)
 {
     assert(str != NULL);
     assert(len >= 0);
     if (len >= str->allocated_len)
         _tstring_maybe_expand(str, len - str->len);
-    
+
     str->len = len;
     str->str[len] = 0;
     return str;
@@ -328,7 +340,8 @@ tstring_set_size(tstring_t *str, int32_t len)
  * Returns: @str
  */
 tstring_t *
-tstring_insert_len(tstring_t *str, int32_t pos, const char *val, int32_t len)
+tstring_insert_len(tstring_t * str, int32_t pos, const char *val,
+                   int32_t len)
 {
     assert(str != NULL);
     assert(val != NULL);
@@ -340,38 +353,52 @@ tstring_insert_len(tstring_t *str, int32_t pos, const char *val, int32_t len)
         pos = str->len;
     else
         assert(pos <= str->len);
-    /* Check whether val represents a substring of string.  This test
-     * probably violates chapter and verse of the C standards, since
-     * ">=" and "<=" are only valid when val really is a substring.
-     * In practice, it will work on modern archs.  
+    /*
+       Check whether val represents a substring of string.  This test
+       * probably violates chapter and verse of the C standards, since
+       * ">=" and "<=" are only valid when val really is a substring.
+       * In practice, it will work on modern archs.  
      */
     if (val >= str->str && val <= str->str + str->len) {
         unsigned int offset = val - str->str;
         unsigned int precount = 0;
-        _tstring_maybe_expand (str, len);
+
+        _tstring_maybe_expand(str, len);
         val = str->str + offset;
-        /* At this point, val is valid again.  */
-        /* Open up space where we are going to insert.  */
-        if (pos < str->len)
-        memmove(str->str + pos + len, str->str + pos, str->len - pos);
-        /* Move the source part before the gap, if any.  */
-        if (offset < pos) {
-            precount = min((unsigned int)len, pos - offset);
-            memcpy(str->str + pos, val, precount);
-        }
-        /* Move the source part after the gap, if any.  */
-        if (len > precount)
-            memcpy(str->str + pos + precount,
-                    val + /* Already moved: */ precount + /* Space opened up: */ len,
-                    len - precount);
-    } else {
-        _tstring_maybe_expand (str, len);
-        /* If we aren't appending at the end, move a hunk
-         * of the old string to the end, opening up space
+        /*
+           At this point, val is valid again.  
+         */
+        /*
+           Open up space where we are going to insert.  
          */
         if (pos < str->len)
             memmove(str->str + pos + len, str->str + pos, str->len - pos);
-        /* insert the new string */
+        /*
+           Move the source part before the gap, if any.  
+         */
+        if (offset < pos) {
+            precount = min((unsigned int) len, pos - offset);
+            memcpy(str->str + pos, val, precount);
+        }
+        /*
+           Move the source part after the gap, if any.  
+         */
+        if (len > precount)
+            memcpy(str->str + pos + precount,
+                   val + /* Already moved: */ precount +
+                   /* Space opened up: */ len,
+                   len - precount);
+    } else {
+        _tstring_maybe_expand(str, len);
+        /*
+           If we aren't appending at the end, move a hunk
+           * of the old string to the end, opening up space
+         */
+        if (pos < str->len)
+            memmove(str->str + pos + len, str->str + pos, str->len - pos);
+        /*
+           insert the new string 
+         */
         if (len == 1)
             str->str[pos] = *val;
         else
@@ -384,27 +411,23 @@ tstring_insert_len(tstring_t *str, int32_t pos, const char *val, int32_t len)
 
 #define SUB_DELIM_CHARS  "!$&'()*+,;="
 
-__attribute__((unused)) static int
-is_valid(char c, const char *reserved_chars_allowed)
+__attribute__ ((unused))
+     static int
+       is_valid(char c, const char *reserved_chars_allowed)
 {
-    if (isalnum (c) ||
-            c == '-' ||
-            c == '.' ||
-            c == '_' ||
-            c == '~')
+    if (isalnum(c) || c == '-' || c == '.' || c == '_' || c == '~')
         return TRUE;
     if (reserved_chars_allowed &&
-            strchr (reserved_chars_allowed, c) != NULL)
+        strchr(reserved_chars_allowed, c) != NULL)
         return TRUE;
     return FALSE;
 }
 
-__attribute__((unused)) static int
-unichar_ok(unsigned int c)
+__attribute__ ((unused))
+     static int
+       unichar_ok(unsigned int c)
 {
-  return
-      (c != (unsigned char) -2) &&
-      (c != (unsigned char) -1);
+    return (c != (unsigned char) -2) && (c != (unsigned char) -1);
 }
 
 /**
@@ -418,7 +441,7 @@ unichar_ok(unsigned int c)
  * Returns: @str
  */
 tstring_t *
-tstring_append(tstring_t *str, const char *val)
+tstring_append(tstring_t * str, const char *val)
 {
     assert(str != NULL);
     assert(val != NULL);
@@ -442,7 +465,7 @@ tstring_append(tstring_t *str, const char *val)
  * Returns: @str
  */
 tstring_t *
-tstring_append_len(tstring_t *str, const char *val, int32_t len)    
+tstring_append_len(tstring_t * str, const char *val, int32_t len)
 {
     assert(str != NULL);
     assert(val != NULL);
@@ -460,7 +483,7 @@ tstring_append_len(tstring_t *str, const char *val, int32_t len)
  * Returns: @str
  */
 tstring_t *
-tstring_append_c(tstring_t *str, char c)
+tstring_append_c(tstring_t * str, char c)
 {
     assert(str != NULL);
     return tstring_insert_c(str, -1, c);
@@ -477,7 +500,7 @@ tstring_append_c(tstring_t *str, char c)
  * Return value: @str
  **/
 tstring_t *
-tstring_append_unichar(tstring_t  *str, unsigned int wc)
+tstring_append_unichar(tstring_t * str, unsigned int wc)
 {
     assert(str != NULL);
     return tstring_insert_unichar(str, -1, wc);
@@ -494,7 +517,7 @@ tstring_append_unichar(tstring_t  *str, unsigned int wc)
  * Returns: @str
  */
 tstring_t *
-tstring_prepend(tstring_t *str, const char *val)
+tstring_prepend(tstring_t * str, const char *val)
 {
     assert(str != NULL);
     assert(val != NULL);
@@ -518,7 +541,7 @@ tstring_prepend(tstring_t *str, const char *val)
  * Returns: @str
  */
 tstring_t *
-tstring_prepend_len(tstring_t *str, const char *val, int32_t len)    
+tstring_prepend_len(tstring_t * str, const char *val, int32_t len)
 {
     assert(str != NULL);
     assert(val != NULL);
@@ -536,8 +559,8 @@ tstring_prepend_len(tstring_t *str, const char *val, int32_t len)
  * Returns: @str
  */
 tstring_t *
-tstring_prepend_c(tstring_t *str, char c)
-{  
+tstring_prepend_c(tstring_t * str, char c)
+{
     assert(str != NULL);
     return tstring_insert_c(str, 0, c);
 }
@@ -553,8 +576,8 @@ tstring_prepend_c(tstring_t *str, char c)
  * Return value: @str
  **/
 tstring_t *
-tstring_prepend_unichar(tstring_t *str, unsigned int wc)
-{ 
+tstring_prepend_unichar(tstring_t * str, unsigned int wc)
+{
     assert(str != NULL);
     return tstring_insert_unichar(str, 0, wc);
 }
@@ -570,8 +593,8 @@ tstring_prepend_unichar(tstring_t *str, unsigned int wc)
  *
  * Returns: @str
  */
-tstring_t*
-tstring_insert(tstring_t *str, int32_t pos, const char *val)
+tstring_t *
+tstring_insert(tstring_t * str, int32_t pos, const char *val)
 {
     assert(str != NULL);
     assert(pos >= 0);
@@ -592,20 +615,22 @@ tstring_insert(tstring_t *str, int32_t pos, const char *val)
  * Returns: @str
  */
 tstring_t *
-tstring_insert_c(tstring_t *str, int32_t pos, const char c)
+tstring_insert_c(tstring_t * str, int32_t pos, const char c)
 {
     assert(str != NULL);
-    _tstring_maybe_expand (str, 1);
+    _tstring_maybe_expand(str, 1);
     if (pos < 0)
         pos = str->len;
     else
         assert(pos <= str->len);
-    /* If not just an append, move the old stuff */
+    /*
+       If not just an append, move the old stuff 
+     */
     if (pos < str->len)
         memmove(str->str + pos + 1, str->str + pos, str->len - pos);
     str->str[pos] = c;
     str->len += 1;
-    
+
     str->str[str->len] = 0;
     return str;
 }
@@ -623,13 +648,15 @@ tstring_insert_c(tstring_t *str, int32_t pos, const char c)
  * Return value: @str
  **/
 tstring_t *
-tstring_insert_unichar(tstring_t *str, int32_t pos, unsigned int wc)
+tstring_insert_unichar(tstring_t * str, int32_t pos, unsigned int wc)
 {
     int charlen, first, i;
     char *dest;
-    
+
     assert(str != NULL);
-    /* Code copied from g_unichar_to_utf() */
+    /*
+       Code copied from g_unichar_to_utf() 
+     */
     if (wc < 0x80) {
         first = 0;
         charlen = 1;
@@ -649,13 +676,17 @@ tstring_insert_unichar(tstring_t *str, int32_t pos, unsigned int wc)
         first = 0xfc;
         charlen = 6;
     }
-    /* End of copied code */
+    /*
+       End of copied code 
+     */
     _tstring_maybe_expand(str, charlen);
     if (pos < 0)
         pos = str->len;
     else
         assert(pos <= str->len);
-    /* If not just an append, move the old stuff */
+    /*
+       If not just an append, move the old stuff 
+     */
     if (pos < str->len)
         memmove(str->str + pos + charlen, str->str + pos, str->len - pos);
     dest = str->str + pos;
@@ -665,7 +696,7 @@ tstring_insert_unichar(tstring_t *str, int32_t pos, unsigned int wc)
     }
     dest[0] = wc | first;
     str->len += charlen;
-    
+
     str->str[str->len] = 0;
     return str;
 }
@@ -682,7 +713,7 @@ tstring_insert_unichar(tstring_t *str, int32_t pos, unsigned int wc)
  *
  **/
 tstring_t *
-tstring_overwrite(tstring_t *str, int32_t pos, const char *val)
+tstring_overwrite(tstring_t * str, int32_t pos, const char *val)
 {
     assert(val != NULL);
     return tstring_overwrite_len(str, pos, val, strlen(val));
@@ -702,11 +733,14 @@ tstring_overwrite(tstring_t *str, int32_t pos, const char *val)
  *
  */
 tstring_t *
-tstring_overwrite_len(tstring_t *str, int32_t pos, const char *val, int32_t len)
+tstring_overwrite_len(tstring_t * str, int32_t pos, const char *val,
+                      int32_t len)
 {
     int end;
+
     assert(str != NULL);
-    if (!len) return str;
+    if (!len)
+        return str;
     assert(val != NULL);
     assert(pos <= str->len);
     if (len < 0)
@@ -735,7 +769,7 @@ tstring_overwrite_len(tstring_t *str, int32_t pos, const char *val, int32_t len)
  * Returns: @str
  */
 tstring_t *
-tstring_erase(tstring_t *str, int32_t pos, int32_t len)
+tstring_erase(tstring_t * str, int32_t pos, int32_t len)
 {
     assert(str != NULL);
     assert(pos >= 0);
@@ -745,12 +779,13 @@ tstring_erase(tstring_t *str, int32_t pos, int32_t len)
     else {
         assert(pos + len <= str->len);
         if (pos + len < str->len)
-            memmove(str->str + pos, str->str + pos + len, str->len - (pos + len));
+            memmove(str->str + pos, str->str + pos + len,
+                    str->len - (pos + len));
     }
     str->len -= len;
-    
+
     str->str[str->len] = 0;
-    
+
     return str;
 }
 
@@ -765,10 +800,11 @@ tstring_erase(tstring_t *str, int32_t pos, int32_t len)
  *               semantics that exactly match g_ascii_tolower().
  **/
 tstring_t *
-tstring_ascii_down(tstring_t *str)
+tstring_ascii_down(tstring_t * str)
 {
     char *s;
     int n;
+
     assert(str != NULL);
     n = str->len;
     s = str->str;
@@ -790,11 +826,12 @@ tstring_ascii_down(tstring_t *str)
  *               characters converted to upper case in place, with
  *               semantics that exactly match toupper().
  **/
-tstring_t*
-tstring_ascii_up(tstring_t *str)
+tstring_t *
+tstring_ascii_up(tstring_t * str)
 {
     char *s;
     int n;
+
     assert(str != NULL);
     n = str->len;
     s = str->str;
@@ -819,13 +856,14 @@ tstring_ascii_up(tstring_t *str)
  *   Use tstring_ascii_down() or g_utf8_strdown() instead.
  */
 tstring_t *
-tstring_down(tstring_t *str)
+tstring_down(tstring_t * str)
 {
     unsigned char *s;
     long n;
+
     assert(str != NULL);
     n = str->len;
-    s = (unsigned char *)str->str;
+    s = (unsigned char *) str->str;
     while (n) {
         if (isupper(*s))
             *s = tolower(*s);
@@ -848,20 +886,21 @@ tstring_down(tstring_t *str)
  *   Use tstring_ascii_up() or g_utf8_strup() instead.
  **/
 tstring_t *
-tstring_up(tstring_t *str)
+tstring_up(tstring_t * str)
 {
     unsigned char *s;
     long n;
+
     assert(str != NULL);
     n = str->len;
-    s = (unsigned char *)str->str;
+    s = (unsigned char *) str->str;
     while (n) {
-        if (islower (*s))
+        if (islower(*s))
             *s = toupper(*s);
         s++;
         n--;
     }
-    
+
     return str;
 }
 
@@ -878,10 +917,11 @@ tstring_up(tstring_t *str)
  *
  */
 void
-tstring_append_vprintf(tstring_t *str, const char *format, va_list args)
+tstring_append_vprintf(tstring_t * str, const char *format, va_list args)
 {
     char *buf;
     int len;
+
     assert(str != NULL);
     assert(format != NULL);
     len = vasprintf(&buf, format, args);
@@ -905,7 +945,7 @@ tstring_append_vprintf(tstring_t *str, const char *format, va_list args)
  *
  */
 void
-tstring_vprintf(tstring_t *str, const char *format, va_list args)
+tstring_vprintf(tstring_t * str, const char *format, va_list args)
 {
     tstring_truncate(str, 0);
     tstring_append_vprintf(str, format, args);
@@ -924,9 +964,10 @@ tstring_vprintf(tstring_t *str, const char *format, va_list args)
  * #tstring_t are destroyed.
  */
 void
-tstring_printf(tstring_t *str, const char *format, ...)
+tstring_printf(tstring_t * str, const char *format, ...)
 {
     va_list args;
+
     tstring_truncate(str, 0);
     va_start(args, format);
     tstring_append_vprintf(str, format, args);
@@ -944,9 +985,10 @@ tstring_printf(tstring_t *str, const char *format, ...)
  * that the text is appended to the #tstring_t.
  */
 void
-tstring_append_printf(tstring_t *str, const char *format, ...)
+tstring_append_printf(tstring_t * str, const char *format, ...)
 {
     va_list args;
+
     va_start(args, format);
     tstring_append_vprintf(str, format, args);
     va_end(args);

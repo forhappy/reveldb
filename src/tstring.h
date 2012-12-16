@@ -1,3 +1,4 @@
+
 /*
  * =============================================================================
  *
@@ -15,6 +16,7 @@
  *
  * =============================================================================
  */
+
 #ifndef _TSTRING_H_
 #define _TSTRING_H_
 
@@ -50,60 +52,77 @@ struct _tstring_t {
     unsigned int allocated_len;
 };
 
-extern tstring_t * tstring_new(const char *init);
-extern tstring_t * tstring_new_len(const char *init, int32_t len);
-extern tstring_t * tstring_sized_new(uint32_t default_size);
-extern void tstring_free(tstring_t *str);
-extern int tstring_equal(const tstring_t *str1, const tstring_t *str2);
-extern uint32_t tstring_hash(const tstring_t *str);
-extern tstring_t * tstring_assign(tstring_t *str, const char *rval);
-extern tstring_t * tstring_truncate(tstring_t *str, int32_t len);    
-extern tstring_t * tstring_set_size(tstring_t *str, int32_t len);
-extern tstring_t * tstring_insert_len(tstring_t *str, int32_t pos, const char *val, int32_t len);  
-extern tstring_t * tstring_append(tstring_t *str, const char *val);
-extern tstring_t * tstring_append_len(tstring_t *str, const char *val, int32_t len);  
-extern tstring_t * tstring_append_c(tstring_t *str, char c);
-extern tstring_t * tstring_append_unichar(tstring_t *str, unsigned int wc);
-extern tstring_t * tstring_prepend(tstring_t *str, const char *val);
-extern tstring_t * tstring_prepend_c(tstring_t *str, char c);
-extern tstring_t * tstring_prepend_unichar(tstring_t *str, unsigned int wc);
-extern tstring_t * tstring_prepend_len(tstring_t *str, const char *val, int32_t len);  
-extern tstring_t * tstring_insert(tstring_t *str, int32_t pos, const char *val);
-extern tstring_t * tstring_insert_c(tstring_t *str, int32_t pos, const char c);
-extern tstring_t * tstring_insert_unichar(tstring_t *str, int32_t pos, unsigned int wc);
-extern tstring_t * tstring_overwrite(tstring_t *str, int32_t pos, const char *val);
-extern tstring_t * tstring_overwrite_len(tstring_t *str, int32_t pos, const char *val, int32_t len);
-extern tstring_t * tstring_erase(tstring_t *str, int32_t pos, int32_t len);
-extern tstring_t * tstring_ascii_down(tstring_t *str);
-extern tstring_t * tstring_ascii_up(tstring_t *str);
-extern void tstring_vprintf(tstring_t *str, const char *format, va_list args);
-extern void tstring_printf(tstring_t *str, const char *format, ...) __attribute__((format(printf, 2, 3)));
-extern void tstring_append_vprintf(tstring_t *str, const char *format, va_list args);
-extern void tstring_append_printf(tstring_t *str, const char *format, ...) __attribute__((format(printf, 2, 3)));
-extern tstring_t * tstring_down(tstring_t *str);
-extern tstring_t * tstring_up(tstring_t *str);
+extern tstring_t *tstring_new(const char *init);
+extern tstring_t *tstring_new_len(const char *init, int32_t len);
+extern tstring_t *tstring_sized_new(uint32_t default_size);
+extern void tstring_free(tstring_t * str);
+extern int tstring_equal(const tstring_t * str1, const tstring_t * str2);
+extern uint32_t tstring_hash(const tstring_t * str);
+extern tstring_t *tstring_assign(tstring_t * str, const char *rval);
+extern tstring_t *tstring_truncate(tstring_t * str, int32_t len);
+extern tstring_t *tstring_set_size(tstring_t * str, int32_t len);
+extern tstring_t *tstring_insert_len(tstring_t * str, int32_t pos,
+                                     const char *val, int32_t len);
+extern tstring_t *tstring_append(tstring_t * str, const char *val);
+extern tstring_t *tstring_append_len(tstring_t * str, const char *val,
+                                     int32_t len);
+extern tstring_t *tstring_append_c(tstring_t * str, char c);
+extern tstring_t *tstring_append_unichar(tstring_t * str, unsigned int wc);
+extern tstring_t *tstring_prepend(tstring_t * str, const char *val);
+extern tstring_t *tstring_prepend_c(tstring_t * str, char c);
+extern tstring_t *tstring_prepend_unichar(tstring_t * str,
+                                          unsigned int wc);
+extern tstring_t *tstring_prepend_len(tstring_t * str, const char *val,
+                                      int32_t len);
+extern tstring_t *tstring_insert(tstring_t * str, int32_t pos,
+                                 const char *val);
+extern tstring_t *tstring_insert_c(tstring_t * str, int32_t pos,
+                                   const char c);
+extern tstring_t *tstring_insert_unichar(tstring_t * str, int32_t pos,
+                                         unsigned int wc);
+extern tstring_t *tstring_overwrite(tstring_t * str, int32_t pos,
+                                    const char *val);
+extern tstring_t *tstring_overwrite_len(tstring_t * str, int32_t pos,
+                                        const char *val, int32_t len);
+extern tstring_t *tstring_erase(tstring_t * str, int32_t pos, int32_t len);
+extern tstring_t *tstring_ascii_down(tstring_t * str);
+extern tstring_t *tstring_ascii_up(tstring_t * str);
+extern void tstring_vprintf(tstring_t * str, const char *format,
+                            va_list args);
+extern void tstring_printf(tstring_t * str, const char *format, ...)
+    __attribute__ ((format(printf, 2, 3)));
+extern void tstring_append_vprintf(tstring_t * str, const char *format,
+                                   va_list args);
+extern void tstring_append_printf(tstring_t * str, const char *format, ...)
+    __attribute__ ((format(printf, 2, 3)));
+extern tstring_t *tstring_down(tstring_t * str);
+extern tstring_t *tstring_up(tstring_t * str);
 
 /* optimize tstring_append_c */
 static inline tstring_t *
-tstring_append_c_inline(tstring_t *str, char c)
+tstring_append_c_inline(tstring_t * str, char c)
 {
-  if (str->len + 1 < str->allocated_len) {
-      str->str[str->len++] = c;
-      str->str[str->len] = 0;
-  } else
-    tstring_insert_c(str, -1, c);
-  return str;
+    if (str->len + 1 < str->allocated_len) {
+        str->str[str->len++] = c;
+        str->str[str->len] = 0;
+    } else
+        tstring_insert_c(str, -1, c);
+
+    return str;
 }
+
 #define tstring_append_c_optimized(str,c)     tstring_append_c_inline(str, c)
 
-static inline uint32_t tstring_size(const tstring_t *str)
+static inline uint32_t
+tstring_size(const tstring_t * str)
 {
     assert(str != NULL);
 
     return str->len;
 }
 
-static inline char * tstring_data(const tstring_t *str)
+static inline char *
+tstring_data(const tstring_t * str)
 {
     assert(str != NULL);
 
