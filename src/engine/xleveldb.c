@@ -89,6 +89,7 @@ xleveldb_instance_init(xleveldb_config_t *config)
     
     instance->db = leveldb_open(instance->options, config->dbname, &(instance->err));
     instance->config = config;
+    instance->err = NULL;
 
     return instance;
 }
@@ -154,5 +155,15 @@ xleveldb_instance_destroy(xleveldb_instance_t *instance)
     leveldb_destroy_db(instance->options,
             instance->config->dbname,
             &(instance->err));
+}
+
+void
+xleveldb_reset_err(xleveldb_instance_t *instance)
+{
+    assert(instance != NULL);
+    if (instance->err != NULL) {
+        leveldb_free(instance->err);
+        instance->err = NULL;
+    }
 }
 

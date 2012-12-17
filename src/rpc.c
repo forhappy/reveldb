@@ -93,37 +93,30 @@ _rpc_jsonfy_general_response(
 }
 
 static char *
-_rpc_jsonfy_kv_response(const char *key, const char *val)
+_rpc_jsonfy_response_on_kv(const char *key, const char *value)
 {
     assert(key != NULL);
-    assert(val != NULL);
+    assert(value != NULL);
+    char *out = NULL;
+    char *now = gmttime_now();
 
-    char *response = (char *)malloc(sizeof(char) *
-            REVELDB_MAX_KV_RESPONSE_BUFFER_SIZE);
-    if (response == NULL) {
-        fprintf(stderr, "malloc error due to out of memory.\n");
-        return NULL;
-    } else {
-        sprintf(response, "{\"key\": \"%s\",\"val\":\"%s\"}", key, val);
-    }
-    return response;
-}
+    cJSON *root = cJSON_CreateObject();
+    cJSON *kv = cJSON_CreateObject();
 
-static char *
-_rpc_jsonfy_error_response(const char *err, const char *msg)
-{
-    assert(err != NULL);
-    assert(msg != NULL);
+    cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+    cJSON_AddStringToObject(root, "status", "OK");
+    cJSON_AddStringToObject(root, "message", "Get key-value pair done.");
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root, "kv", kv);
+    cJSON_AddStringToObject(kv, "key", key);
+    cJSON_AddStringToObject(kv, "value", value);
+    // out = cJSON_Print(root);
+    /* unformatted json has less data. */
+    out = cJSON_PrintUnformatted(root);
 
-    char *response = (char *)malloc(sizeof(char) *
-            REVELDB_MAX_ERROR_RESPONSE_BUFFER_SIZE);
-    if (response == NULL) {
-        fprintf(stderr, "malloc error due to out of memory.\n");
-        return NULL;
-    } else {
-        sprintf(response, "{\"err\": \"%s\",\"msg\":\"%s\"}", err, msg);
-    }
-    return response;
+    free(now);
+    cJSON_Delete(root);
+    return out;
 }
 
 // error response.
@@ -218,24 +211,24 @@ _rpc_sanity_check(evhttpx_request_t *req, unsigned int *code)
     /* HTTP protocol used */
     evhttpx_proto proto = req->proto;
     if (proto != evhttpx_PROTO_11) {
-        *code = 400;
+        *code = EVHTTPX_RES_BADREQ;
         return _rpc_jsonfy_response_on_sanity_check(
-                400,
+                EVHTTPX_RES_BADREQ,
                 "Bad Request",
                 "Protocal error, you may have to use HTTP/1.1 to do request.");
     }
     /* request method. */
     int method= evhttpx_request_get_method(req);
     if (method != http_method_GET) {
-        *code = 405;
+        *code = EVHTTPX_RES_METHNALLOWED;
         return _rpc_jsonfy_response_on_sanity_check(
-                405,
+                EVHTTPX_RES_METHNALLOWED,
                 "Method Not Allowed",
                 "HTTP method error, you may have to use GET to do request.");
 
     }
 
-    *code = 200;
+    *code = EVHTTPX_RES_OK;
     return NULL;
 }
 
@@ -255,7 +248,7 @@ URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
     }
 
     response = _rpc_jsonfy_response_on_sanity_check(
-            200,
+            EVHTTPX_RES_OK,
             "OK",
             "Reveldb RPC is healthy! :-)");
     evbuffer_add_printf(req->buffer_out, "%s", response);
@@ -289,7 +282,7 @@ URI_rpc_echo_cb(evhttpx_request_t *req, void *userdata)
     now = gmttime_now();
 
     root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(root, "code", 200);
+    cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
     cJSON_AddStringToObject(root, "status", "OK");
     cJSON_AddStringToObject(root, "message",
             "Reveldb echoed the HTTP headers and query arguments of your request.");
@@ -328,7 +321,7 @@ URI_rpc_head_cb(evhttpx_request_t *req, void *userdata)
     }
 
     response = _rpc_jsonfy_response_on_sanity_check(
-            200,
+            EVHTTPX_RES_OK,
             "OK",
             "Reveldb RPC is healthy! :-)");
     evbuffer_add_printf(req->buffer_out, "%s", response);
@@ -369,6 +362,14 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
     evhttpx_query_t *query = req->uri->query;
     const char *quiet = evhttpx_kv_find(query, "quiet");
     const char *dbname = evhttpx_kv_find(query, "db");
+    if (dbname == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                "Bad Request", "Database not specified, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
     /* init new leveldb instance and insert into reveldb. */
     reveldb_t *db = reveldb_init(dbname, reveldb_config);
     reveldb_insert_db(&reveldb, db);
@@ -385,7 +386,7 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
         free(response);
     } else {
         response = _rpc_jsonfy_response_on_error(req,
-                500, "Internal Server Error", "Failed to create new leveldb instance.");
+                EVHTTPX_RES_SERVERR, "Internal Server Error", "Failed to create new leveldb instance.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
         free(response);
@@ -433,9 +434,37 @@ URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
     const char *key = evhttpx_kv_find(query, "key");
+    if (key == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                "Bad Request", "You have to specify which key to set.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
     const char *value = evhttpx_kv_find(query, "value");
+    if (value == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                "Bad Request", "You have to set value along with the key you specified.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
     const char *dbname = evhttpx_kv_find(query, "db");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
     leveldb_put(
             db->instance->db,
             db->instance->woptions,
@@ -444,16 +473,16 @@ URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
             &(db->instance->err));
     if (db->instance->err != NULL) {
         response = _rpc_jsonfy_response_on_error(req,
-                500, "Internal Server Error", "Set key-value pair error.");
+                EVHTTPX_RES_SERVERR, "Internal Server Error", db->instance->err);
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
+        xleveldb_reset_err(db->instance);
         free(response);
     } else {
-        response = _rpc_jsonfy_general_response(200, "OK", "Set key-value pair done.");
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK, "OK", "Set key-value pair done.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_OK);
         free(response);
-
     }
 
     return;
@@ -496,19 +525,39 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
     const char *key = evhttpx_kv_find(query, "key");
+    if (key == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                "Bad Request", "You have to specify which key to get.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
     const char *dbname = evhttpx_kv_find(query, "db");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+
     value = leveldb_get(
             db->instance->db,
             db->instance->roptions,
             key, strlen(key),
             &value_len,
             &(db->instance->err));
-    if (!(db->instance->err != NULL)) {
+    if (value != NULL) {
         char *buf = (char *)malloc(sizeof(char) * (value_len + 1));
         memset(buf, 0, value_len + 1);
         snprintf(buf, value_len + 1, "%s", value);
-        response = _rpc_jsonfy_kv_response(key, buf);
+        response = _rpc_jsonfy_response_on_kv(key, buf);
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_OK);
         
@@ -517,10 +566,10 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
         free(response);
     } else {
         response = _rpc_jsonfy_response_on_error(req,
-                404, "Not Found", "No such key exists, please check agein.");
+                EVHTTPX_RES_NOTFOUND, "Not Found", "Key value pair not found.");
         evbuffer_add_printf(req->buffer_out, "%s", response);
-        free(response);
         evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
     }
 
     return;
@@ -581,20 +630,45 @@ URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
     /* request query from client */
     evhttpx_query_t *query = req->uri->query;
     const char *key = evhttpx_kv_find(query, "key");
+    if (key == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                "Bad Request", "You have to specify which key to delete.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
     const char *dbname = evhttpx_kv_find(query, "db");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+
     leveldb_delete(
             db->instance->db,
             db->instance->woptions,
             key, strlen(key),
             &(db->instance->err));
     if (db->instance->err != NULL) {
-        response = _rpc_jsonfy_error_response("DeleteKVError", "Delete key-value pair error.");
+        response = _rpc_jsonfy_response_on_error(req,
+                EVHTTPX_RES_SERVERR, 
+                "Internal Server Error",
+                db->instance->err);
+        xleveldb_reset_err(db->instance);
     } else {
-        response = _rpc_jsonfy_error_response("OK", "Delete key successfully.");
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOCONTENT,
+                "OK", "Delete key done.");
     }
     evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+    evhttpx_send_reply(req, EVHTTPX_RES_NOCONTENT);
 
     free(response);
     return;

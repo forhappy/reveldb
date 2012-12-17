@@ -79,4 +79,6 @@ extern void xleveldb_instance_fini(xleveldb_instance_t *instance);
 
 extern void xleveldb_instance_destroy(xleveldb_instance_t *instance);
 
+extern void xleveldb_reset_err(xleveldb_instance_t *instance);
+
 #endif // _REVELDB_XLEVELDB_H_
