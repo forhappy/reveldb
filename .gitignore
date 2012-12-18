@@ -15,3 +15,14 @@
 *.exe
 *.out
 *.app
+
+# CMake
+*.cmake
+Makefile
+CMakeCache.txt
+reveldb
+build/CMakeFiles/
+build/compat/
+build/src/
+build/conf/
+build/logs/
