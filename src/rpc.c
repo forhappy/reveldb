@@ -73,6 +73,38 @@ _rpc_jsonfy_quiet_response_on_kv(const char *key, const char *value)
     return out;
 }
 
+/* alter the default message when request kv,
+ * this may be useful when seizing a specified kv pair,
+ * in that case you probably want to change your message
+ * to the client other than the default one.
+ * */
+static char *
+_rpc_jsonfy_msgalt_response_on_kv(const char *key,
+        const char *value, const char *message)
+{
+    assert(key != NULL);
+    assert(value != NULL);
+    char *out = NULL;
+    char *now = gmttime_now();
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *kv = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+    cJSON_AddStringToObject(root, "status", "OK");
+    cJSON_AddStringToObject(root, "message", message);
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root, "kv", kv);
+    cJSON_AddStringToObject(kv, key, value);
+    // out = cJSON_Print(root);
+    /* unformatted json has less data. */
+    out = cJSON_PrintUnformatted(root);
+
+    free(now);
+    cJSON_Delete(root);
+    return out;
+}
+
 static char *
 _rpc_jsonfy_response_on_kv(const char *key, const char *value)
 {
@@ -747,7 +779,107 @@ URI_rpc_mget_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_seize_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *value = NULL;
+    char *response = NULL;
+    const char *key = NULL;
+    const char *dbname = NULL;
+    unsigned int value_len = 0;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &key, "key", "You have to specify which key to seize.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified, use the default database.");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+   
+    value = leveldb_get(
+            db->instance->db,
+            db->instance->roptions,
+            key, strlen(key),
+            &value_len,
+            &(db->instance->err));
+    if (value != NULL) {
+
+        char *buf = (char *)malloc(sizeof(char) * (value_len + 1));
+        memset(buf, 0, value_len + 1);
+        snprintf(buf, value_len + 1, "%s", value);
+
+        leveldb_delete(
+                db->instance->db,
+                db->instance->woptions,
+                key, strlen(key),
+                &(db->instance->err));
+
+        if (db->instance->err == NULL) {
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_msgalt_response_on_kv(key, buf,
+                        "Get kv pair OK, but note that "
+                        "you have just deleted the pair on reveldb server");
+            } else {
+                response = _rpc_jsonfy_quiet_response_on_kv(key, buf);
+            }
+        } else {
+             if (is_quiet == false) {
+                response = _rpc_jsonfy_msgalt_response_on_kv(key, buf,
+                        "Get kv pair OK, but note that you cannot delete "
+                        "the pair on reveldb server for some reasons");
+            } else {
+                response = _rpc_jsonfy_quiet_response_on_kv(key, buf);
+            }
+             xleveldb_reset_err(db->instance);
+        }
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_OK);
+        
+        free(buf);
+        free(value);
+        free(response);
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_NOTFOUND, "Not Found", "Key value pair not found.");
+        } else {
+             response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                     "Not Found", "Key value pair not found.");
+        }
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+    }
+
+    return;
+
+}
 
 static void
 URI_rpc_mseize_cb(evhttpx_request_t *req, void *userdata)
