@@ -316,6 +316,36 @@ _rpc_jsonfy_response_on_sanity_check(
 }
 
 static char *
+_rpc_jsonfy_version_response(int major, int minor, bool quiet)
+{
+    char *out = NULL;
+    char *now = NULL;
+    size_t out_len = 64;
+
+    if (quiet == false) {
+        now = gmttime_now();
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+        cJSON_AddStringToObject(root, "status", "OK");
+        cJSON_AddStringToObject(root, "message", "Get leveldb storage engine version.");
+        cJSON_AddStringToObject(root, "date", now);
+        cJSON_AddNumberToObject(root, "major", major);
+        cJSON_AddNumberToObject(root, "minor", minor);
+        // out = cJSON_Print(root);
+        /* unformatted json has less data. */
+        out = cJSON_PrintUnformatted(root);
+        free(now);
+        cJSON_Delete(root);
+        return out;
+    } else {
+        out = (char *)malloc(sizeof(char) * out_len);
+        memset(out, 0, out_len);
+        sprintf(out, "{\"major\": %d, \"minor\": %d}", major, minor);
+        return out;
+    }
+}
+
+static char *
 _rpc_proto_and_method_sanity_check(
         evhttpx_request_t *req,
         unsigned int *code)
@@ -1238,7 +1268,31 @@ URI_rpc_exists_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_version_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+    
+    response = _rpc_jsonfy_version_response(leveldb_major_version(),
+            leveldb_minor_version(), is_quiet);
+    
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+    free(response);
+
+    return;
+}
 
 reveldb_rpc_t *
 reveldb_rpc_init()
