@@ -26,11 +26,10 @@
 #include "utility.h"
 
 static int
-_rpc_parse_kv_pairs(evhttpx_kv_t *kv, void *arg)
+_rpc_parse_kv_pair(evhttpx_kv_t *kv, void *arg)
 {
     cJSON *root = (cJSON *)arg;
     unsigned int value = 0;
-    LOG_DEBUG(("key: %s, val: %s\n", kv->key, kv->val));
     if (strcmp(kv->val, "true") == 0) {
         cJSON_AddTrueToObject(root, kv->key);
         return 0;
@@ -52,7 +51,7 @@ static cJSON *
 _rpc_jsonfy_kv_pairs(evhttpx_kvs_t *kvs)
 {
     cJSON *root = cJSON_CreateObject();
-    evhttpx_kvs_for_each(kvs, _rpc_parse_kv_pairs, root);
+    evhttpx_kvs_for_each(kvs, _rpc_parse_kv_pair, root);
     return root;
 }
 
@@ -118,6 +117,54 @@ _rpc_jsonfy_response_on_kv(const char *key, const char *value)
     cJSON_Delete(root);
     return out;
 }
+
+static int
+_rpc_jsonfy_kv_pair(evhttpx_kv_t *kv, void *arg)
+{
+    cJSON *root = (cJSON *)arg;
+
+    cJSON *jsonkv = cJSON_CreateObject();
+    cJSON_AddItemToObject(root, "kv", jsonkv);
+    cJSON_AddStringToObject(jsonkv, "key", kv->key);
+    cJSON_AddStringToObject(jsonkv, "value", kv->val);
+    return 0;
+}
+
+/* Note: the following function is different
+ * from _rpc_jsonfy_kv_pairs. */
+static cJSON * 
+_rpc_jsonfy_kv_pairs2nd(evhttpx_kvs_t *kvs)
+{
+    cJSON *root = cJSON_CreateObject();
+    evhttpx_kvs_for_each(kvs, _rpc_jsonfy_kv_pair, root);
+    return root;
+}
+
+static char *
+_rpc_jsonfy_response_on_kvs(evhttpx_kvs_t *kvs)
+{
+    assert(kvs != NULL);
+
+    char *out = NULL;
+    char *now = gmttime_now();
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *jsonkvs = _rpc_jsonfy_kv_pairs2nd(kvs);
+
+    cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+    cJSON_AddStringToObject(root, "status", "OK");
+    cJSON_AddStringToObject(root, "message", "Get key-value pair done.");
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root, "kvs", jsonkvs);
+    // out = cJSON_Print(root);
+    /* unformatted json has less data. */
+    out = cJSON_PrintUnformatted(root);
+
+    free(now);
+    cJSON_Delete(root);
+    return out;
+}
+
 
 // error response.
 // {
