@@ -1351,13 +1351,15 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_incr_cb(evhttpx_request_t *req, void *userdata)
-{// TODO based on get right now.
+{
     /* json formatted response. */
     unsigned int code = 0;
     bool is_quiet = false;
     char *value = NULL;
     char *response = NULL;
     const char *key = NULL;
+    const char *step = NULL;
+    long long llstep = -1;
     const char *dbname = NULL;
     unsigned int value_len = 0;
     
@@ -1378,6 +1380,24 @@ URI_rpc_incr_cb(evhttpx_request_t *req, void *userdata)
         evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
         free(response);
         return;
+    }
+    
+    response = _rpc_query_param_sanity_check(req,
+            &step, "step", "You have to specify step length to incr.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } else {
+        if (!safe_strtoll(step, &llstep)) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Step you have specified must be numerical.");
+            evbuffer_add_printf(req->buffer_out, "%s", response);
+            evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+            free(response);
+            return;
+        }
     }
 
     response = _rpc_query_param_sanity_check(req, &dbname, "db",
@@ -1401,19 +1421,51 @@ URI_rpc_incr_cb(evhttpx_request_t *req, void *userdata)
             &value_len,
             &(db->instance->err));
     if (value != NULL) {
-        char *buf = (char *)malloc(sizeof(char) * (value_len + 1));
-        memset(buf, 0, value_len + 1);
-        snprintf(buf, value_len + 1, "%s", value);
-       
-        if (is_quiet == false) {
-            response = _rpc_jsonfy_response_on_kv(key, buf);
+        long long llvalue = -1;
+        if (safe_strntoll(value, value_len, &llvalue)) {
+            char valuebuf[64] = {0};
+            llvalue += llstep;
+            sprintf(valuebuf, "%lld", llvalue);
+            leveldb_put(
+                    db->instance->db,
+                    db->instance->woptions,
+                    key, strlen(key),
+                    valuebuf, strlen(valuebuf),
+                    &(db->instance->err));
+            if (db->instance->err != NULL) {
+                if (is_quiet == false) {
+                    response = _rpc_jsonfy_response_on_error(req,
+                            EVHTTPX_RES_SERVERR, "Internal Server Error",
+                            db->instance->err);
+                } else {
+                    response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                            "Internal Server Error", db->instance->err);
+                }
+                evbuffer_add_printf(req->buffer_out, "%s", response);
+                evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+            } else {
+                if (is_quiet == false) {
+                    response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                            "OK", "Incr value done.");
+                } else {
+                    response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+                }
+                evbuffer_add_printf(req->buffer_out, "%s", response);
+                evhttpx_send_reply(req, EVHTTPX_RES_OK);
+            }
         } else {
-            response = _rpc_jsonfy_quiet_response_on_kv(key, buf);
-        }
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        
-        free(buf);
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_response_on_error(req,
+                        EVHTTPX_RES_BADREQ, "Bad Request",
+                        "Value is not numerical, incr is not allowed.");
+            } else {
+                response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                        "Bad Request", "Value is not numerical, incr is not allowed.");
+            }
+            evbuffer_add_printf(req->buffer_out, "%s", response);
+            evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        } 
+
         free(value);
         free(response);
     } else {
@@ -1430,18 +1482,19 @@ URI_rpc_incr_cb(evhttpx_request_t *req, void *userdata)
     }
 
     return;
-
 }
 
 static void
 URI_rpc_decr_cb(evhttpx_request_t *req, void *userdata)
-{// TODO based on get right now.
+{
     /* json formatted response. */
     unsigned int code = 0;
     bool is_quiet = false;
     char *value = NULL;
     char *response = NULL;
     const char *key = NULL;
+    const char *step = NULL;
+    long long llstep = -1;
     const char *dbname = NULL;
     unsigned int value_len = 0;
     
@@ -1462,6 +1515,24 @@ URI_rpc_decr_cb(evhttpx_request_t *req, void *userdata)
         evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
         free(response);
         return;
+    }
+    
+    response = _rpc_query_param_sanity_check(req,
+            &step, "step", "You have to specify step length to incr.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } else {
+        if (!safe_strtoll(step, &llstep)) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Step you have specified must be numerical.");
+            evbuffer_add_printf(req->buffer_out, "%s", response);
+            evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+            free(response);
+            return;
+        }
     }
 
     response = _rpc_query_param_sanity_check(req, &dbname, "db",
@@ -1485,19 +1556,51 @@ URI_rpc_decr_cb(evhttpx_request_t *req, void *userdata)
             &value_len,
             &(db->instance->err));
     if (value != NULL) {
-        char *buf = (char *)malloc(sizeof(char) * (value_len + 1));
-        memset(buf, 0, value_len + 1);
-        snprintf(buf, value_len + 1, "%s", value);
-       
-        if (is_quiet == false) {
-            response = _rpc_jsonfy_response_on_kv(key, buf);
+        long long llvalue = -1;
+        if (safe_strntoll(value, value_len, &llvalue)) {
+            char valuebuf[64] = {0};
+            llvalue -= llstep;
+            sprintf(valuebuf, "%lld", llvalue);
+            leveldb_put(
+                    db->instance->db,
+                    db->instance->woptions,
+                    key, strlen(key),
+                    valuebuf, strlen(valuebuf),
+                    &(db->instance->err));
+            if (db->instance->err != NULL) {
+                if (is_quiet == false) {
+                    response = _rpc_jsonfy_response_on_error(req,
+                            EVHTTPX_RES_SERVERR, "Internal Server Error",
+                            db->instance->err);
+                } else {
+                    response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                            "Internal Server Error", db->instance->err);
+                }
+                evbuffer_add_printf(req->buffer_out, "%s", response);
+                evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+            } else {
+                if (is_quiet == false) {
+                    response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                            "OK", "Decr value done.");
+                } else {
+                    response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+                }
+                evbuffer_add_printf(req->buffer_out, "%s", response);
+                evhttpx_send_reply(req, EVHTTPX_RES_OK);
+            }
         } else {
-            response = _rpc_jsonfy_quiet_response_on_kv(key, buf);
-        }
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        
-        free(buf);
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_response_on_error(req,
+                        EVHTTPX_RES_BADREQ, "Bad Request",
+                        "Value is not numerical, incr is not allowed.");
+            } else {
+                response = _rpc_jsonfy_general_response(EVHTTPX_RES_BADREQ,
+                        "Bad Request", "Value is not numerical, incr is not allowed.");
+            }
+            evbuffer_add_printf(req->buffer_out, "%s", response);
+            evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        } 
+
         free(value);
         free(response);
     } else {
@@ -1514,7 +1617,6 @@ URI_rpc_decr_cb(evhttpx_request_t *req, void *userdata)
     }
 
     return;
-
 }
 
 static void

@@ -76,6 +76,29 @@ safe_strtoll(const char *str, int64_t * out)
 }
 
 bool
+safe_strntoll(const char *str, size_t len, int64_t * out)
+{
+    assert(out != NULL);
+    char buf[64] = {0}; /* should be enough. */
+    char *pstr = buf;
+    errno = 0;
+    *out = 0;
+    char *endptr;
+    snprintf(buf, len + 1, "%s", str);
+    long long ll = strtoll(pstr, &endptr, 10);
+
+    if ((errno == ERANGE) || (pstr == endptr)) {
+        return false;
+    }
+
+    if (isspace(*endptr) || (*endptr == '\0' && endptr != pstr)) {
+        *out = ll;
+        return true;
+    }
+    return false;
+}
+
+bool
 safe_strtoul(const char *str, uint32_t * out)
 {
     char *endptr = NULL;
