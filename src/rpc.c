@@ -1347,7 +1347,21 @@ URI_rpc_range_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+
+}
+
+static void
+URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
+{
+
+}
+
+static void
+URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
+{
+
+}
 
 static void
 URI_rpc_incr_cb(evhttpx_request_t *req, void *userdata)
@@ -2221,6 +2235,8 @@ reveldb_rpc_init()
     callbacks->rpc_mseize_cb = evhttpx_set_cb(rpc->httpx, "/rpc/mseize", URI_rpc_mseize_cb, NULL);
     callbacks->rpc_range_cb = evhttpx_set_cb(rpc->httpx, "/rpc/range", URI_rpc_range_cb, NULL);
     callbacks->rpc_regex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/regex", URI_rpc_regex_cb, NULL);
+    callbacks->rpc_kregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/kregex", URI_rpc_kregex_cb, NULL);
+    callbacks->rpc_vregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/vregex", URI_rpc_vregex_cb, NULL);
 
     /* update related operations. */
     callbacks->rpc_incr_cb = evhttpx_set_cb(rpc->httpx, "/rpc/incr", URI_rpc_incr_cb, NULL);
@@ -2292,6 +2308,8 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
     evhttpx_callback_free(rpc->callbacks->rpc_mseize_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_range_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_regex_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_kregex_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_vregex_cb);
 
     evhttpx_callback_free(rpc->callbacks->rpc_incr_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_decr_cb);
