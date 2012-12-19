@@ -1705,15 +1705,17 @@ URI_rpc_cas_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_replace_cb(evhttpx_request_t *req, void *userdata)
-{// TODO based on get right now.
+{
     /* json formatted response. */
     unsigned int code = 0;
     bool is_quiet = false;
-    char *value = NULL;
+    char *value_old = NULL;
+    tstring_t *value_new = NULL;
     char *response = NULL;
     const char *key = NULL;
+    const char *value = NULL;
     const char *dbname = NULL;
-    unsigned int value_len = 0;
+    unsigned int value_old_len = 0;
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
@@ -1726,13 +1728,23 @@ URI_rpc_replace_cb(evhttpx_request_t *req, void *userdata)
     is_quiet = _rpc_query_quiet_check(req);
 
     response = _rpc_query_param_sanity_check(req,
-            &key, "key", "You have to specify which key to get.");
+            &key, "key", "You have to specify which key to replace.");
     if (response != NULL) {
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
         free(response);
         return;
     }
+    
+    response = _rpc_query_param_sanity_check(req, &value, "value",
+            "You have to set value along with the key you specified.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
 
     response = _rpc_query_param_sanity_check(req, &dbname, "db",
             "Database not specified, use the default database.");
@@ -1748,29 +1760,45 @@ URI_rpc_replace_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
    
-    value = leveldb_get(
+    value_old = leveldb_get(
             db->instance->db,
             db->instance->roptions,
             key, strlen(key),
-            &value_len,
+            &value_old_len,
             &(db->instance->err));
-    if (value != NULL) {
-        char *buf = (char *)malloc(sizeof(char) * (value_len + 1));
-        memset(buf, 0, value_len + 1);
-        snprintf(buf, value_len + 1, "%s", value);
-       
-        if (is_quiet == false) {
-            response = _rpc_jsonfy_response_on_kv(key, buf);
+    if (value_old != NULL) {
+        value_new = tstring_new_len(value, strlen(value));
+        leveldb_put(
+            db->instance->db,
+            db->instance->woptions,
+            key, strlen(key),
+            tstring_data(value_new), tstring_size(value_new),
+            &(db->instance->err));
+        if (db->instance->err != NULL) {
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_response_on_error(req,
+                        EVHTTPX_RES_SERVERR, "Internal Server Error",
+                        db->instance->err);
+            } else {
+                response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                        "Internal Server Error", db->instance->err);
+            }
         } else {
-            response = _rpc_jsonfy_quiet_response_on_kv(key, buf);
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                        "OK", "Replace value done.");
+            } else {
+                response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+            }
         }
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_OK);
         
-        free(buf);
-        free(value);
         free(response);
+        leveldb_free(value_old);
+        tstring_free(value_new);
     } else {
+
         if (is_quiet == false) {
             response = _rpc_jsonfy_response_on_error(req,
                     EVHTTPX_RES_NOTFOUND, "Not Found", "Key value pair not found.");
