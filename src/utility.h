@@ -33,6 +33,7 @@ bool safe_strtoll(const char *str, int64_t * out);
 bool safe_strntoll(const char *str, size_t len, int64_t * out);
 bool safe_strtoul(const char *str, uint32_t * out);
 bool safe_strtol(const char *str, int32_t * out);
+char * safe_urldecode(const char *url);
 
 /*
  * Get GMT formatted time.
