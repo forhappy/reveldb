@@ -74,6 +74,24 @@ _rpc_jsonfy_quiet_response_on_kv(const char *key, const char *value)
     return out;
 }
 
+static char *
+_rpc_jsonfy_quiet_response_on_kv_with_len(
+        const char *key, size_t key_len,
+        const char *value, size_t value_len)
+{
+    assert(key != NULL);
+    assert(value != NULL);
+
+    size_t extra_sapce = 64;
+    size_t total = extra_sapce + key_len + value_len;
+
+    char *out = (char *)malloc(sizeof(char) * (total));
+    memset(out, 0, total);
+    sprintf(out, "{\"%s\": \"%s\"}", key, value);
+
+    return out;
+}
+
 /* alter the default message when request kv,
  * this may be useful when seizing a specified kv pair,
  * in that case you probably want to change your message
@@ -97,6 +115,34 @@ _rpc_jsonfy_msgalt_response_on_kv(const char *key,
     cJSON_AddStringToObject(root, "date", now);
     cJSON_AddItemToObject(root, "kv", kv);
     cJSON_AddStringToObject(kv, key, value);
+    // out = cJSON_Print(root);
+    /* unformatted json has less data. */
+    out = cJSON_PrintUnformatted(root);
+
+    free(now);
+    cJSON_Delete(root);
+    return out;
+}
+
+static char *
+_rpc_jsonfy_response_on_kv_with_len(
+        const char *key, size_t key_len,
+        const char *value, size_t value_len)
+{
+    assert(key != NULL);
+    assert(value != NULL);
+    char *out = NULL;
+    char *now = gmttime_now();
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *kv = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+    cJSON_AddStringToObject(root, "status", "OK");
+    cJSON_AddStringToObject(root, "message", "Get key-value pair done.");
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root, "kv", kv);
+    cJSON_AddStringToObjectWithLength(kv, key, key_len, value, value_len);
     // out = cJSON_Print(root);
     /* unformatted json has less data. */
     out = cJSON_PrintUnformatted(root);
@@ -1428,24 +1474,17 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
             LOG_DEBUG(("key %s matched.", key));
             value = leveldb_iter_value(iter, &value_len);
             if (value != NULL) {
-                char *keybuf = (char *)malloc(sizeof(char) * (key_len + 1));
-                memset(keybuf, 0, key_len + 1);
-                snprintf(keybuf, value_len + 1, "%s", key);
-
-                char *valuebuf = (char *)malloc(sizeof(char) * (value_len + 1));
-                memset(valuebuf, 0, value_len + 1);
-                snprintf(valuebuf, value_len + 1, "%s", value);
-                
+                                
                 if (is_quiet == false) {
-                    response = _rpc_jsonfy_response_on_kv(keybuf, valuebuf);
+                    response = _rpc_jsonfy_response_on_kv_with_len(
+                            key, key_len, value, value_len);
                 } else {
-                    response = _rpc_jsonfy_quiet_response_on_kv(keybuf, valuebuf);
+                    response = _rpc_jsonfy_quiet_response_on_kv_with_len(
+                            key, key_len, value, value_len);
                 }
                 evbuffer_add_printf(req->buffer_out, "%s", response);
                 evhttpx_send_reply(req, EVHTTPX_RES_OK);
                 
-                free(keybuf);
-                free(valuebuf);
                 free(response);
             }
         }

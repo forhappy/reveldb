@@ -89,6 +89,20 @@ cJSON_strdup(const char *str)
 	return copy;
 }
 
+static char *
+cJSON_strndup(const char *str, size_t n)
+{
+	size_t len;
+	char *copy;
+
+	len = n + 1;
+	if (!(copy = (char *) cJSON_malloc(len)))
+		return 0;
+    memset(copy, 0, len);
+	memcpy(copy, str, n);
+	return copy;
+}
+
 void
 cJSON_InitHooks(cJSON_Hooks * hooks)
 {
@@ -875,6 +889,18 @@ cJSON_AddItemToObject(cJSON * object, const char *string, cJSON * item)
 }
 
 void
+cJSON_AddItemToObjectWithKeyLength(cJSON * object, const char *string,
+        size_t len, cJSON * item)
+{
+	if (!item)
+		return;
+	if (item->string)
+		cJSON_free(item->string);
+	item->string = cJSON_strndup(string, len);
+	cJSON_AddItemToArray(object, item);
+}
+
+void
 cJSON_AddItemReferenceToArray(cJSON * array, cJSON * item)
 {
 	cJSON_AddItemToArray(array, create_reference(item));
@@ -1030,6 +1056,18 @@ cJSON_CreateString(const char *string)
 	if (item) {
 		item->type = cJSON_String;
 		item->valuestring = cJSON_strdup(string);
+	}
+	return item;
+}
+
+cJSON *
+cJSON_CreateStringWithLength(const char *string, size_t len)
+{
+	cJSON *item = cJSON_New_Item();
+
+	if (item) {
+		item->type = cJSON_String;
+		item->valuestring = cJSON_strndup(string, len);
 	}
 	return item;
 }

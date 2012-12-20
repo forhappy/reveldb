@@ -135,6 +135,7 @@ extern cJSON *cJSON_CreateFalse();
 extern cJSON *cJSON_CreateBool(int b);
 extern cJSON *cJSON_CreateNumber(double num);
 extern cJSON *cJSON_CreateString(const char *string);
+extern cJSON *cJSON_CreateStringWithLength(const char *string, size_t len);
 extern cJSON *cJSON_CreateArray();
 extern cJSON *cJSON_CreateObject();
 
@@ -148,6 +149,9 @@ extern cJSON *cJSON_CreateStringArray(const char **strings, int count);
 extern void cJSON_AddItemToArray(cJSON * array, cJSON * item);
 extern void cJSON_AddItemToObject(cJSON * object, const char *string,
 								  cJSON * item);
+void
+cJSON_AddItemToObjectWithKeyLength(cJSON * object, const char *string,
+        size_t len, cJSON * item);
 
 /* Append reference to item to the specified array/object. 
  * Use this when you want to add an existing cJSON to a new cJSON,
@@ -176,6 +180,7 @@ extern void cJSON_ReplaceItemInObject(cJSON * object, const char *string,
 #define cJSON_AddFalseToObject(object,name)		cJSON_AddItemToObject(object, name, cJSON_CreateFalse())
 #define cJSON_AddNumberToObject(object,name,n)	cJSON_AddItemToObject(object, name, cJSON_CreateNumber(n))
 #define cJSON_AddStringToObject(object,name,s)	cJSON_AddItemToObject(object, name, cJSON_CreateString(s))
+#define cJSON_AddStringToObjectWithLength(object,name,nn,s,sn)    cJSON_AddItemToObjectWithKeyLength(object, name, nn, cJSON_CreateStringWithLength(s, sn))
 
 #ifdef __cplusplus
 }
