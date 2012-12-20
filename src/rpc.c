@@ -1401,7 +1401,117 @@ URI_rpc_range_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
 {
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    char *key_pattern = NULL;
+    char *val_pattern = NULL;
+    struct re_pattern_buffer key_pattern_buf;
+    struct re_pattern_buffer val_pattern_buf;
+    const char *param_key_pattern = NULL;
+    const char *param_val_pattern = NULL;
+    const char *dbname = NULL;
+    evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
+    assert(kvs != NULL);
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &param_key_pattern, "kregex",
+            "You have to specify key's pattern to match.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } else {
+        key_pattern = _rpc_pattern_unescape(param_key_pattern);
+    }
+    
+    response = _rpc_query_param_sanity_check(req,
+            &param_val_pattern, "vregex",
+            "You have to specify value's pattern to match.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } else {
+        val_pattern = _rpc_pattern_unescape(param_val_pattern);
+    }
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified, use the default database.");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+    key_pattern_buf.translate = 0; 
+    key_pattern_buf.fastmap = 0;
+    key_pattern_buf.buffer = 0;
+    key_pattern_buf.allocated = 0;
+
+    val_pattern_buf.translate = 0; 
+    val_pattern_buf.fastmap = 0;
+    val_pattern_buf.buffer = 0;
+    val_pattern_buf.allocated = 0;
+
+    re_syntax_options = RE_SYNTAX_EGREP;
+    re_compile_pattern(key_pattern, strlen(key_pattern), &key_pattern_buf);
+    re_compile_pattern(val_pattern, strlen(val_pattern), &val_pattern_buf);
+
+    leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
+            db->instance->roptions);
+
+    leveldb_iter_seek_to_first(iter);
+    while(true) {
+        if (!leveldb_iter_valid(iter)) break;
+        int matches = -1;
+        size_t key_len = -1;
+        size_t value_len = -1;
+        const char *key = leveldb_iter_key(iter, &key_len);
+        const char *value = NULL; 
+        if ((matches = re_match(&key_pattern_buf, key, key_len, 0, NULL)) >= 0) {
+            matches = -1;
+            value = leveldb_iter_value(iter, &value_len);
+            if ((matches = re_match(&val_pattern_buf, value, value_len, 0, NULL)) >= 0) {
+                evhttpx_kv_t *kv =
+                    evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
+                evhttpx_kvs_add_kv(kvs, kv);
+            }
+        }
+        leveldb_iter_next(iter);
+    }
+    leveldb_iter_destroy(iter);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_kvs(kvs);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
+    }
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+
+    free(response);
+    evhttpx_kvs_free(kvs);
+    return;
 }
 
 static void
