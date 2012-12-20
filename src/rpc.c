@@ -1541,7 +1541,7 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_query_param_sanity_check(req,
             &param_key_pattern, "pattern",
-            "You have to specify which key to get.");
+            "You have to specify key pattern to match.");
     if (response != NULL) {
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
@@ -1635,7 +1635,7 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_query_param_sanity_check(req,
             &param_key_pattern, "pattern",
-            "You have to specify which key to get.");
+            "You have to specify value pattern to match.");
     if (response != NULL) {
         evbuffer_add_printf(req->buffer_out, "%s", response);
         evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
