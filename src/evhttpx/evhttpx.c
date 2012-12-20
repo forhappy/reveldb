@@ -17,7 +17,7 @@
 
 #include <sys/tree.h>
 
-#include <reveldb/util/evhttpx.h>
+#include <reveldb/evhttpx/evhttpx.h>
 
 static int _evhttpx_request_parser_start(http_parser_t * p);
 static int _evhttpx_request_parser_path(http_parser_t * p, const char * data, size_t len);

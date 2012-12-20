@@ -6,7 +6,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <reveldb/util/http-parser.h>
+#include <reveldb/evhttpx/http-parser.h>
 
 #ifdef PARSER_DEBUG
 #define __QUOTE(x)                  # x

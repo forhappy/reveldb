@@ -22,7 +22,7 @@
 #include <leveldb/c.h>
 
 #include <reveldb/engine/xleveldb.h>
-#include <reveldb/util/evhttpx.h>
+#include <reveldb/evhttpx/evhttpx.h>
 #include <reveldb/util/rbtree.h>
 #include <reveldb/util/xconfig.h>
 
