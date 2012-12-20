@@ -20,7 +20,6 @@
 *.cmake
 Makefile
 CMakeCache.txt
-reveldb
 build/CMakeFiles/
 build/compat/
 build/src/
