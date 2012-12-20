@@ -26,3 +26,7 @@ build/compat/
 build/src/
 build/conf/
 build/logs/
+
+# Vim swapfiles
+*.swp
+*.swo
