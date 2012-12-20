@@ -184,7 +184,7 @@ _rpc_jsonfy_kv_pair(evhttpx_kv_t *kv, void *arg)
     cJSON *root = (cJSON *)arg;
 
     cJSON *jsonkv = cJSON_CreateObject();
-    cJSON_AddItemToObject(root, "kv", jsonkv);
+    cJSON_AddItemToArray(root, jsonkv);
     cJSON_AddStringToObject(jsonkv, kv->key, kv->val);
     return 0;
 }
@@ -194,7 +194,7 @@ _rpc_jsonfy_kv_pair(evhttpx_kv_t *kv, void *arg)
 static cJSON * 
 _rpc_jsonfy_kv_pairs2nd(evhttpx_kvs_t *kvs)
 {
-    cJSON *root = cJSON_CreateObject();
+    cJSON *root = cJSON_CreateArray();
     evhttpx_kvs_for_each(kvs, _rpc_jsonfy_kv_pair, root);
     return root;
 }
@@ -1415,6 +1415,9 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
     struct re_pattern_buffer pattern_buf;
     const char *param_key_pattern = NULL;
     const char *dbname = NULL;
+    evhttpx_kvs_t *kvs = evhttpx_kvs_new();
+
+    assert(kvs != NULL);
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
@@ -1471,30 +1474,28 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
         const char *key = leveldb_iter_key(iter, &key_len);
         const char *value = NULL; 
         if ((matches = re_match(&pattern_buf, key, key_len, 0, NULL)) >= 0) {
-            LOG_DEBUG(("key %s matched.", key));
             value = leveldb_iter_value(iter, &value_len);
-            if (value != NULL) {
-                                
-                if (is_quiet == false) {
-                    response = _rpc_jsonfy_response_on_kv_with_len(
-                            key, key_len, value, value_len);
-                } else {
-                    response = _rpc_jsonfy_quiet_response_on_kv_with_len(
-                            key, key_len, value, value_len);
-                }
-                evbuffer_add_printf(req->buffer_out, "%s", response);
-                evhttpx_send_reply(req, EVHTTPX_RES_OK);
-                
-                free(response);
+            if (value != NULL) {                    
+                evhttpx_kv_t *kv =
+                    evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
+                evhttpx_kvs_add_kv(kvs, kv);
             }
         }
 
         leveldb_iter_next(iter);
     }
-
     leveldb_iter_destroy(iter);
 
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_kvs(kvs);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
+    }
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
 
+    free(response);
+    evhttpx_kvs_free(kvs);
     return;
 }
 

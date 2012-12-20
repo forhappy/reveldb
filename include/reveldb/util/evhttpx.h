@@ -760,6 +760,9 @@ int evhttpx_add_alias(evhttpx_t * evhttpx, const char * name);
  */
 evhttpx_kv_t  * evhttpx_kv_new(const char * key, const char * val, char kalloc, char valloc);
 evhttpx_kvs_t * evhttpx_kvs_new(void);
+evhttpx_kv_t * evhttpx_kvlen_new(const char * key, size_t key_len,
+        const char * val, size_t val_len,
+        char kalloc, char valloc);
 
 void          evhttpx_kv_free(evhttpx_kv_t * kv);
 void          evhttpx_kvs_free(evhttpx_kvs_t * kvs);

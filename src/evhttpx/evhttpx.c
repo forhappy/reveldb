@@ -2026,6 +2026,51 @@ evhttpx_kvs_new(void)
 }
 
 evhttpx_kv_t *
+evhttpx_kvlen_new(const char * key, size_t key_len,
+        const char * val, size_t val_len,
+        char kalloc, char valloc)
+{
+    evhttpx_kv_t * kv;
+
+    if (!(kv = malloc(sizeof(evhttpx_kv_t)))) {
+        return NULL;
+    }
+
+    kv->k_heaped = kalloc;
+    kv->v_heaped = valloc;
+    kv->klen     = key_len;
+    kv->vlen     = val_len;
+
+    if (key != NULL) {
+
+        if (kalloc == 1) {
+            char * s = malloc(kv->klen + 1);
+
+            s[kv->klen] = '\0';
+            memcpy(s, key, kv->klen);
+            kv->key     = s;
+        } else {
+            kv->key = (char *)key;
+        }
+    }
+
+    if (val != NULL) {
+
+        if (valloc == 1) {
+            char * s = malloc(kv->vlen + 1);
+
+            s[kv->vlen] = '\0';
+            memcpy(s, val, kv->vlen);
+            kv->val     = s;
+        } else {
+            kv->val = (char *)val;
+        }
+    }
+
+    return kv;
+}     /* evhttpx_kvlen_new */
+
+evhttpx_kv_t *
 evhttpx_kv_new(const char * key, const char * val, char kalloc, char valloc)
 {
     evhttpx_kv_t * kv;
