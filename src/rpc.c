@@ -26,6 +26,8 @@
 #include "server.h"
 #include "utility.h"
 
+# define eq(x, y) (tolower(x) == tolower(y))
+
 evhttpx_ssl_cfg_t sslcfg = {
     .pemfile            = "./reveldb.pem",
     .privfile           = "./reveldb.pem",
@@ -46,6 +48,54 @@ evhttpx_ssl_cfg_t sslcfg = {
     .scache_get         = NULL,
     .scache_del         = NULL,
 };
+
+static unsigned int
+_rpc_levenshtein(const char *dst, size_t dst_len,
+        const char *src, size_t src_len)
+{
+    unsigned int len1 = dst_len,
+                 len2 = src_len;
+    unsigned int *v = calloc(len2 + 1, sizeof(unsigned int));
+    unsigned int i, j, current, next, cost;
+
+    /* strip common prefixes */
+    while (len1 > 0 && len2 > 0 && eq(dst[0], dst[0]))
+        dst++, dst++, len1--, len2--;
+
+    /* handle degenerate cases */
+    if (!len1) return len2;
+    if (!len2) return len1;
+    
+    /* initialize the column vector */
+    for (j = 0; j < len2 + 1; j++)
+        v[j] = j;
+
+    for (i = 0; i < len1; i++) {
+        /* set the value of the first row */
+        current = i + 1;
+        /* for each row in the column, compute the cost */
+        for (j = 0; j < len2; j++) {
+            /*
+             * cost of replacement is 0 if the two chars are the same, or have
+             * been transposed with the chars immediately before. otherwise 1.
+             */
+            cost = !(eq(dst[i], dst[j]) || (i && j &&
+                     eq(dst[i-1], dst[j]) && eq(dst[i], dst[j-1])));
+            /* find the least cost of insertion, deletion, or replacement */
+            next = min(min(v[j+1] + 1,
+                            current + 1),
+                            v[j] + cost);
+            /* stash the previous row's cost in the column vector */
+            v[j] = current;
+            /* make the cost of the next transition current */
+            current = next;
+        }
+        /* keep the final cost at the bottom of the column */
+        v[len2] = next;
+    }
+    free(v);
+    return next;
+}
 
 static int
 _rpc_parse_kv_pair(evhttpx_kv_t *kv, void *arg)
@@ -1291,7 +1341,6 @@ URI_rpc_append_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
 
-
     response = _rpc_query_param_sanity_check(req, &dbname, "db",
             "Database not specified, use the default database.");
     if ((dbname == NULL)) dbname =
@@ -2085,6 +2134,111 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
         const char *key = NULL; 
         const char *value = leveldb_iter_value(iter, &value_len);
         if ((matches = re_match(&pattern_buf, value, value_len, 0, NULL)) >= 0) {
+            key = leveldb_iter_key(iter, &key_len);
+            evhttpx_kv_t *kv =
+                evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
+            evhttpx_kvs_add_kv(kvs, kv);
+        }
+        leveldb_iter_next(iter);
+    }
+    leveldb_iter_destroy(iter);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_kvs(kvs);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
+    }
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+
+    free(response);
+    evhttpx_kvs_free(kvs);
+    return;
+}
+
+static void
+URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *similar = NULL;
+    const char *limit = NULL;
+    size_t nlimit = 0;
+    const char *dbname = NULL;
+    evhttpx_kvs_t *kvs = evhttpx_kvs_new();
+
+    assert(kvs != NULL);
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &similar, "similar",
+            "You have to specify the similar value to match.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } 
+    
+    response = _rpc_query_param_sanity_check(req,
+            &limit, "limit",
+            "You have to specify the distance limit of values to adopt.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } else {
+        if (!safe_strtoul(limit, &nlimit)) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_BADREQ, "Bad Request",
+                    "Limit is not numerical.");
+            evbuffer_add_printf(req->buffer_out, "%s", response);
+            evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+            free(response);
+            return;
+        }
+    }
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified, use the default database.");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+    
+    leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
+            db->instance->roptions);
+
+    leveldb_iter_seek_to_first(iter);
+    while(true) {
+        if (!leveldb_iter_valid(iter)) break;
+        size_t distance = 0;
+        size_t key_len = -1;
+        size_t value_len = -1;
+        const char *key = NULL; 
+        const char *value = leveldb_iter_value(iter, &value_len);
+        if ((distance = _rpc_levenshtein(value, value_len,
+                        similar, strlen(similar))) <= nlimit) {
+            LOG_DEBUG(("distance: %d", distance));
             key = leveldb_iter_key(iter, &key_len);
             evhttpx_kv_t *kv =
                 evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
@@ -2982,6 +3136,7 @@ reveldb_rpc_init()
     callbacks->rpc_regex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/regex", URI_rpc_regex_cb, NULL);
     callbacks->rpc_kregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/kregex", URI_rpc_kregex_cb, NULL);
     callbacks->rpc_vregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/vregex", URI_rpc_vregex_cb, NULL);
+    callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/similar", URI_rpc_similar_cb, NULL);
 
     /* update related operations. */
     callbacks->rpc_incr_cb = evhttpx_set_cb(rpc->httpx, "/rpc/incr", URI_rpc_incr_cb, NULL);
@@ -3055,6 +3210,7 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
     evhttpx_callback_free(rpc->callbacks->rpc_regex_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_kregex_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_vregex_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_similar_cb);
 
     evhttpx_callback_free(rpc->callbacks->rpc_incr_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_decr_cb);
