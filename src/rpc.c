@@ -659,12 +659,166 @@ URI_rpc_size_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_repair_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *dbname = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified."); 
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+    
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+
+    char *datadir = reveldb_config->server_config->datadir;
+    tstring_t *fullpath = tstring_new(datadir);
+
+    if (tstring_data(fullpath)[tstring_size(fullpath) - 1] == '/')
+        tstring_append(fullpath, dbname);
+    else {
+        tstring_append(fullpath, "/");
+        tstring_append(fullpath, dbname); 
+    }
+
+    leveldb_repair_db(db->instance->options,
+            tstring_data(fullpath),
+            &(db->instance->err));
+   if (db->instance->err != NULL) {
+        if (is_quiet == false ) {
+        response = _rpc_jsonfy_response_on_error(req,
+                EVHTTPX_RES_SERVERR, 
+                "Internal Server Error",
+                db->instance->err);
+        } else {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR, 
+                "Internal Server Error",
+                db->instance->err);
+        }
+        xleveldb_reset_err(db->instance);
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                    "OK", "Repair db done.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+        }
+    }
+
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+
+    free(response);
+    tstring_free(fullpath);
+    return;
+}
 
 static void
 URI_rpc_destroy_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *dbname = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
 
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified."); 
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    }
+
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+    
+    char *datadir = reveldb_config->server_config->datadir;
+    tstring_t *fullpath = tstring_new(datadir);
+
+    if (tstring_data(fullpath)[tstring_size(fullpath) - 1] == '/')
+        tstring_append(fullpath, dbname);
+    else {
+        tstring_append(fullpath, "/");
+        tstring_append(fullpath, dbname); 
+    }
+
+    leveldb_close(db->instance->db);
+    leveldb_destroy_db(db->instance->options,
+            tstring_data(fullpath),
+            &(db->instance->err));
+   if (db->instance->err != NULL) {
+        if (is_quiet == false ) {
+        response = _rpc_jsonfy_response_on_error(req,
+                EVHTTPX_RES_SERVERR, 
+                "Internal Server Error",
+                db->instance->err);
+        } else {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR, 
+                "Internal Server Error",
+                db->instance->err);
+        }
+        xleveldb_reset_err(db->instance);
+    } else {
+        rb_erase(&(db->node), &reveldb);
+        // reveldb_free_db(db);
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                    "OK", "Destroy db done.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+        }
+    }
+
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+
+    free(response);
+    tstring_free(fullpath);
+    return;
+}
 
 static void
 URI_rpc_add_cb(evhttpx_request_t *req, void *userdata)
