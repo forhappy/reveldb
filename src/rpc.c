@@ -384,6 +384,39 @@ _rpc_jsonfy_response_on_sanity_check(
 }
 
 static char *
+_rpc_jsonfy_size_response(const char *start_key,
+        const char *limit_key,
+        uint64_t size, bool quiet)
+{
+    char *out = NULL;
+    char *now = NULL;
+    size_t out_len = 64;
+
+    if (quiet == false) {
+        now = gmttime_now();
+        cJSON *root = cJSON_CreateObject();
+        cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+        cJSON_AddStringToObject(root, "status", "OK");
+        cJSON_AddStringToObject(root, "message", "Get leveldb storage engine version.");
+        cJSON_AddStringToObject(root, "date", now);
+        cJSON_AddStringToObject(root, "start", start_key);
+        cJSON_AddStringToObject(root, "limit", limit_key);
+        cJSON_AddNumberToObject(root, "size", size);
+        // out = cJSON_Print(root);
+        /* unformatted json has less data. */
+        out = cJSON_PrintUnformatted(root);
+        free(now);
+        cJSON_Delete(root);
+        return out;
+    } else {
+        out = (char *)malloc(sizeof(char) * out_len);
+        memset(out, 0, out_len);
+        sprintf(out, "{\"size\": %llu}", size);
+        return out;
+    }
+}
+
+static char *
 _rpc_jsonfy_version_response(int major, int minor, bool quiet)
 {
     char *out = NULL;
@@ -817,7 +850,64 @@ URI_rpc_compact_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_size_cb(evhttpx_request_t *req, void *userdata)
 {
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *start_key = NULL;
+    const char *limit_key = NULL;
+    size_t start_key_len = -1;
+    size_t limit_key_len = -1;
+    uint64_t size = -1;
+    const char *dbname = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
 
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_param_sanity_check(req,
+            &start_key, "start", "You have to specify start key "
+            "from which to compute size");
+    
+    _rpc_query_param_sanity_check(req,
+            &limit_key, "limit", "You have to specify limit key "
+            "to end the compution.");
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified, use the default database.");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+
+    start_key_len = strlen(start_key);
+    limit_key_len = strlen(limit_key);
+   
+    leveldb_approximate_sizes(
+            db->instance->db,
+            1,
+            &start_key, &start_key_len,
+            &limit_key, &limit_key_len,
+            &size);
+    response = _rpc_jsonfy_size_response(start_key, limit_key, size, is_quiet);
+    evbuffer_add_printf(req->buffer_out, "%s", response);
+    evhttpx_send_reply(req, EVHTTPX_RES_OK);
+
+    free(response);
+    return;
 }
 
 static void
