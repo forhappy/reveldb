@@ -596,7 +596,90 @@ URI_rpc_status_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_property_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *content = NULL;
+    char *response = NULL;
+    const char *property = NULL;
+    const char *dbname = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &property, "property", "You have to specify what property to get.");
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
+        free(response);
+        return;
+    } else {
+        if (!(strcmp(property, "leveldb.stats")
+                || strcmp(property, "leveldb.sstables")
+                || strncmp(property, "leveldb.num-files-at-level",
+                    strlen("leveldb.num-files-at-level")))) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid leveldb property.");
+            evbuffer_add_printf(req->buffer_out, "%s", response);
+            evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+            free(response);
+            return;
+        }
+    }
+
+    response = _rpc_query_param_sanity_check(req, &dbname, "db",
+            "Database not specified, use the default database.");
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
+        free(response);
+        return;
+    }
+   
+    content = leveldb_property_value(
+            db->instance->db,
+            property);
+    if (content != NULL) {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_kv("property", content);
+        } else {
+            response = _rpc_jsonfy_quiet_response_on_kv("property", content);
+        }
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_OK); 
+
+        free(content);
+        free(response);
+        return;
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_SERVERR, "Not Found", "Failed to get leveldb property.");
+        } else {
+             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                     "Internal Server Error", "Failed to get leveldb property.");
+        }
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
+        free(response);
+    }
+
+    return;
+}
 
 static void
 URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
@@ -651,7 +734,9 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_compact_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+
+}
 
 static void
 URI_rpc_size_cb(evhttpx_request_t *req, void *userdata)
