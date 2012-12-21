@@ -26,6 +26,27 @@
 #include "server.h"
 #include "utility.h"
 
+evhttpx_ssl_cfg_t sslcfg = {
+    .pemfile            = "./reveldb.pem",
+    .privfile           = "./reveldb.pem",
+    .cafile             = "./reveldb.crt",
+    .capath             = "./",
+    .ciphers            = "RC4+RSA:HIGH:+MEDIUM:+LOW",
+    .ssl_opts           = SSL_OP_NO_SSLv2,
+    .ssl_ctx_timeout    = 60 * 60 * 48,
+    .verify_peer        = SSL_VERIFY_PEER,
+    .verify_depth       = 42,
+    .x509_verify_cb     = NULL,
+    .x509_chk_issued_cb = NULL,
+    .scache_type        = evhttpx_ssl_scache_type_internal,
+    .scache_size        = 1024,
+    .scache_timeout     = 1024,
+    .scache_init        = NULL,
+    .scache_add         = NULL,
+    .scache_get         = NULL,
+    .scache_del         = NULL,
+};
+
 static int
 _rpc_parse_kv_pair(evhttpx_kv_t *kv, void *arg)
 {
@@ -2833,6 +2854,7 @@ reveldb_rpc_init()
 
     rpc->evbase = event_base_new();
     rpc->httpx = evhttpx_new(rpc->evbase, NULL);
+    evhttpx_ssl_init(rpc->httpx, &sslcfg);
 
     /* only for server status test. */
     callbacks->rpc_void_cb = evhttpx_set_cb(rpc->httpx, "/rpc/void", URI_rpc_void_cb, NULL);
