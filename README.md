@@ -47,7 +47,7 @@ Reveldb provides more than 40 APIs,  they are classified as 5 catalogs according
 
 HTTP RPC Support and REST Protocols 
 ------------------------------------
-Reveldb supports both HTTP RPC and REST protocols.
+Reveldb supports both HTTP RPCs(almost finished) and REST protocols( REST protocol is under heavy developing, not available right now).
 
 
 HTTPS Support
