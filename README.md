@@ -54,7 +54,7 @@ HTTPS Support
 -------------
 Reveldb can meet with your crucial safety needs by providing HTTPS way of accessing your data.
 
-Mater-Master and Master-Slave backups
+Master-Master and Master-Slave backups
 -------------------------------------
 (in heavy developing, not available right now)
 
