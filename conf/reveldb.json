@@ -3,6 +3,7 @@
         "host": "0.0.0.0",
         "rpcports": "8087, 8088",
         "restports": "8089, 9000",
+        "backlog": 1024,
         "https": true,
         "username": "root",
         "password": "root",

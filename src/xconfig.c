@@ -167,6 +167,9 @@ _xconfig_init_internal_config(const char *config)
         server_config->https =
             (iter->valueint == 1) ? true : false;
 
+        iter = cJSON_GetObjectItem(server, "backlog");
+        server_config->backlog = iter->valueint;
+
         iter = cJSON_GetObjectItem(server, "username");
         config_vlen = strlen(iter->valuestring);
         server_config->username =

@@ -34,6 +34,7 @@ struct reveldb_server_config_s_ {
     char *rpcports; /* rpc protocol bind port, reveldb can listen on multiple ports. */
     char *restports; /* REST protocol bind port, reveldb can listen on multiple ports. */
     bool https; /* https enabled. */
+    unsigned int backlog; /* backlog of epoll. */
     char *username; /* reveldb root username. */
     char *password; /* password. */
     char *datadir; /* data directory. */
