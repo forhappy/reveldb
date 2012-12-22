@@ -88,7 +88,7 @@ int main(int argc, const char *argv[])
     LOG_DEBUG(("initializing default reveldb storage engine done!"));
 
     LOG_DEBUG(("initializing reveldb rpc server..."));
-    reveldb_rpc_t *rpc = reveldb_rpc_init();
+    reveldb_rpc_t *rpc = reveldb_rpc_init(reveldb_config);
     LOG_DEBUG(("initializing reveldb rpc server done!"));
 
     LOG_DEBUG(("reveldb rpc server is running..."));

@@ -28,26 +28,6 @@
 
 # define eq(x, y) (tolower(x) == tolower(y))
 
-evhttpx_ssl_cfg_t sslcfg = {
-    .pemfile            = "./reveldb.pem",
-    .privfile           = "./reveldb.pem",
-    .cafile             = "./reveldb.crt",
-    .capath             = "./",
-    .ciphers            = "RC4+RSA:HIGH:+MEDIUM:+LOW",
-    .ssl_opts           = SSL_OP_NO_SSLv2,
-    .ssl_ctx_timeout    = 60 * 60 * 48,
-    .verify_peer        = SSL_VERIFY_PEER,
-    .verify_depth       = 42,
-    .x509_verify_cb     = NULL,
-    .x509_chk_issued_cb = NULL,
-    .scache_type        = evhttpx_ssl_scache_type_internal,
-    .scache_size        = 1024,
-    .scache_timeout     = 1024,
-    .scache_init        = NULL,
-    .scache_add         = NULL,
-    .scache_get         = NULL,
-    .scache_del         = NULL,
-};
 
 static unsigned int
 _rpc_levenshtein(const char *dst, size_t dst_len,
@@ -3039,13 +3019,17 @@ URI_rpc_version_cb(evhttpx_request_t *req, void *userdata)
 }
 
 reveldb_rpc_t *
-reveldb_rpc_init()
+reveldb_rpc_init(reveldb_config_t *config)
 {
     reveldb_rpc_t *rpc = (reveldb_rpc_t *)malloc(sizeof(reveldb_rpc_t));
     if (rpc == NULL) {
         LOG_ERROR(("failed to malloc reveldb_rpc_t."));
         return NULL;
     }
+
+    rpc->evbase = event_base_new();
+    rpc->httpx = evhttpx_new(rpc->evbase, NULL);
+
     reveldb_rpc_callbacks_t *callbacks = (reveldb_rpc_callbacks_t *)
         malloc(sizeof(reveldb_rpc_callbacks_t));
     if (callbacks == NULL) {
@@ -3053,10 +3037,15 @@ reveldb_rpc_init()
         free(rpc);
         return NULL;
     }
-
-    rpc->evbase = event_base_new();
-    rpc->httpx = evhttpx_new(rpc->evbase, NULL);
-    evhttpx_ssl_init(rpc->httpx, &sslcfg);
+    
+    evhttpx_ssl_cfg_t *sslcfg = (evhttpx_ssl_cfg_t *)
+        malloc(sizeof(evhttpx_ssl_cfg_t));
+    if (sslcfg == NULL) {
+        LOG_ERROR(("failed to malloc evhttpx_ssl_cfg_t"));
+        free(rpc);
+        free(callbacks);
+        return NULL;
+    }
 
     /* only for server status test. */
     callbacks->rpc_void_cb = evhttpx_set_cb(rpc->httpx, "/rpc/void", URI_rpc_void_cb, NULL);
@@ -3064,70 +3053,89 @@ reveldb_rpc_init()
     callbacks->rpc_head_cb = evhttpx_set_cb(rpc->httpx, "/rpc/head", URI_rpc_head_cb, NULL);
     
     /* reveldb reports and internal leveldb storage engine status. */
-    callbacks->rpc_report_cb = evhttpx_set_cb(rpc->httpx, "/rpc/report", URI_rpc_report_cb, NULL);
-    callbacks->rpc_status_cb = evhttpx_set_cb(rpc->httpx, "/rpc/status", URI_rpc_status_cb, NULL);
+    callbacks->rpc_report_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/report", URI_rpc_report_cb, NULL);
+    callbacks->rpc_status_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/status", URI_rpc_status_cb, NULL);
     callbacks->rpc_property_cb = evhttpx_set_cb(rpc->httpx, "/rpc/property", URI_rpc_property_cb, NULL);
 
     /* admin operations. */
-    callbacks->rpc_new_cb = evhttpx_set_cb(rpc->httpx, "/rpc/new", URI_rpc_new_cb, NULL);
+    callbacks->rpc_new_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/new", URI_rpc_new_cb, NULL);
     callbacks->rpc_compact_cb = evhttpx_set_cb(rpc->httpx, "/rpc/compact", URI_rpc_compact_cb, NULL);
-    callbacks->rpc_size_cb = evhttpx_set_cb(rpc->httpx, "/rpc/size", URI_rpc_size_cb, NULL);
-    callbacks->rpc_repair_cb = evhttpx_set_cb(rpc->httpx, "/rpc/repair", URI_rpc_repair_cb, NULL);
+    callbacks->rpc_size_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/size", URI_rpc_size_cb, NULL);
+    callbacks->rpc_repair_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/repair", URI_rpc_repair_cb, NULL);
     callbacks->rpc_destroy_cb = evhttpx_set_cb(rpc->httpx, "/rpc/destroy", URI_rpc_destroy_cb, NULL);
 
     /* set(C), get(R), update(U), delete(D) (CRUD)operations. */
 
     /* set related operations. */
-    callbacks->rpc_add_cb = evhttpx_set_cb(rpc->httpx, "/rpc/add", URI_rpc_add_cb, NULL);
-    callbacks->rpc_set_cb = evhttpx_set_cb(rpc->httpx, "/rpc/set", URI_rpc_set_cb, NULL);
-    callbacks->rpc_mset_cb = evhttpx_set_cb(rpc->httpx, "/rpc/mset", URI_rpc_mset_cb, NULL);
-    callbacks->rpc_append_cb = evhttpx_set_cb(rpc->httpx, "/rpc/append", URI_rpc_append_cb, NULL);
+    callbacks->rpc_add_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/add", URI_rpc_add_cb, NULL);
+    callbacks->rpc_set_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/set", URI_rpc_set_cb, NULL);
+    callbacks->rpc_mset_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/mset", URI_rpc_mset_cb, NULL);
+    callbacks->rpc_append_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/append", URI_rpc_append_cb, NULL);
     callbacks->rpc_prepend_cb = evhttpx_set_cb(rpc->httpx, "/rpc/prepend", URI_rpc_prepend_cb, NULL);
-    callbacks->rpc_insert_cb = evhttpx_set_cb(rpc->httpx, "/rpc/insert", URI_rpc_insert_cb, NULL);
+    callbacks->rpc_insert_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/insert", URI_rpc_insert_cb, NULL);
 
     /* get related operations. */
-    callbacks->rpc_get_cb = evhttpx_set_cb(rpc->httpx, "/rpc/get", URI_rpc_get_cb, NULL);
-    callbacks->rpc_mget_cb = evhttpx_set_cb(rpc->httpx, "/rpc/mget", URI_rpc_mget_cb, NULL);
-    callbacks->rpc_seize_cb = evhttpx_set_cb(rpc->httpx, "/rpc/seize", URI_rpc_seize_cb, NULL);
-    callbacks->rpc_mseize_cb = evhttpx_set_cb(rpc->httpx, "/rpc/mseize", URI_rpc_mseize_cb, NULL);
-    callbacks->rpc_range_cb = evhttpx_set_cb(rpc->httpx, "/rpc/range", URI_rpc_range_cb, NULL);
-    callbacks->rpc_regex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/regex", URI_rpc_regex_cb, NULL);
-    callbacks->rpc_kregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/kregex", URI_rpc_kregex_cb, NULL);
-    callbacks->rpc_vregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/vregex", URI_rpc_vregex_cb, NULL);
+    callbacks->rpc_get_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/get", URI_rpc_get_cb, NULL);
+    callbacks->rpc_mget_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/mget", URI_rpc_mget_cb, NULL);
+    callbacks->rpc_seize_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/seize", URI_rpc_seize_cb, NULL);
+    callbacks->rpc_mseize_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/mseize", URI_rpc_mseize_cb, NULL);
+    callbacks->rpc_range_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/range", URI_rpc_range_cb, NULL);
+    callbacks->rpc_regex_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/regex", URI_rpc_regex_cb, NULL);
+    callbacks->rpc_kregex_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/kregex", URI_rpc_kregex_cb, NULL);
+    callbacks->rpc_vregex_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/vregex", URI_rpc_vregex_cb, NULL);
     callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/similar", URI_rpc_similar_cb, NULL);
     callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/ksimilar", URI_rpc_ksimilar_cb, NULL);
     callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/vsimilar", URI_rpc_vsimilar_cb, NULL);
 
     /* update related operations. */
-    callbacks->rpc_incr_cb = evhttpx_set_cb(rpc->httpx, "/rpc/incr", URI_rpc_incr_cb, NULL);
-    callbacks->rpc_decr_cb = evhttpx_set_cb(rpc->httpx, "/rpc/decr", URI_rpc_decr_cb, NULL);
-    callbacks->rpc_cas_cb = evhttpx_set_cb(rpc->httpx, "/rpc/cas", URI_rpc_cas_cb, NULL);
+    callbacks->rpc_incr_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/incr", URI_rpc_incr_cb, NULL);
+    callbacks->rpc_decr_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/decr", URI_rpc_decr_cb, NULL);
+    callbacks->rpc_cas_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/cas", URI_rpc_cas_cb, NULL);
     callbacks->rpc_replace_cb = evhttpx_set_cb(rpc->httpx, "/rpc/replace", URI_rpc_replace_cb, NULL);
 
     /* delete related operations. */
-    callbacks->rpc_del_cb = evhttpx_set_cb(rpc->httpx, "/rpc/del", URI_rpc_del_cb, NULL);
-    callbacks->rpc_mdel_cb = evhttpx_set_cb(rpc->httpx, "/rpc/mdel", URI_rpc_mdel_cb, NULL);
+    callbacks->rpc_del_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/del", URI_rpc_del_cb, NULL);
+    callbacks->rpc_mdel_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/mdel", URI_rpc_mdel_cb, NULL);
     callbacks->rpc_remove_cb = evhttpx_set_cb(rpc->httpx, "/rpc/remove", URI_rpc_remove_cb, NULL);
-    callbacks->rpc_clear_cb = evhttpx_set_cb(rpc->httpx, "/rpc/clear", URI_rpc_clear_cb, NULL);
+    callbacks->rpc_clear_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/clear", URI_rpc_clear_cb, NULL);
 
     /* miscs operations. */
-    callbacks->rpc_sync_cb = evhttpx_set_cb(rpc->httpx, "/rpc/sync", URI_rpc_sync_cb, NULL);
-    callbacks->rpc_check_cb = evhttpx_set_cb(rpc->httpx, "/rpc/check", URI_rpc_check_cb, NULL);
-    callbacks->rpc_exists_cb = evhttpx_set_cb(rpc->httpx, "/rpc/exists", URI_rpc_exists_cb, NULL);
+    callbacks->rpc_sync_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/sync", URI_rpc_sync_cb, NULL);
+    callbacks->rpc_check_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/check", URI_rpc_check_cb, NULL);
+    callbacks->rpc_exists_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/exists", URI_rpc_exists_cb, NULL);
     callbacks->rpc_version_cb = evhttpx_set_cb(rpc->httpx, "/rpc/version", URI_rpc_version_cb, NULL);
 
+    sslcfg->pemfile            = config->ssl_config->key;
+    sslcfg->privfile           = config->ssl_config->key;
+    sslcfg->cafile             = config->ssl_config->cert;
+    sslcfg->capath             = config->ssl_config->capath;
+    sslcfg->ciphers            = config->ssl_config->ciphers;
+    sslcfg->ssl_ctx_timeout    = config->ssl_config->ssl_ctx_timeout;
+    sslcfg->verify_peer        = config->ssl_config->verify_peer;
+    sslcfg->verify_depth       = config->ssl_config->verify_depth;
+    sslcfg->x509_verify_cb     = NULL,
+    sslcfg->x509_chk_issued_cb = NULL,
+    sslcfg->scache_type        = evhttpx_ssl_scache_type_internal,
+    sslcfg->scache_size        = 1024,
+    sslcfg->scache_timeout     = 1024,
+    sslcfg->scache_init        = NULL,
+    sslcfg->scache_add         = NULL,
+    sslcfg->scache_get         = NULL,
+    sslcfg->scache_del         = NULL,
+
+    rpc->sslcfg = sslcfg;
     rpc->callbacks = callbacks;
+    rpc->config = config;
 
     return rpc;
-
 }
 
 void
 reveldb_rpc_run(reveldb_rpc_t *rpc)
 {
-
     assert(rpc != NULL);
 
+    evhttpx_ssl_init(rpc->httpx, rpc->sslcfg);
     // evhttpx_bind_socket(rpc->httpx, "0.0.0.0", 8087, 1024);
     evhttpx_bind_socket(rpc->httpx, "0.0.0.0", 9000, 1024);
 

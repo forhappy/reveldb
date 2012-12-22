@@ -87,11 +87,13 @@ struct reveldb_rpc_s_ {
 
     evbase_t *evbase;
     evhttpx_t *httpx;
+    evhttpx_ssl_cfg_t *sslcfg;
 
     reveldb_rpc_callbacks_t *callbacks;
+    reveldb_config_t *config;
 };
 
-extern reveldb_rpc_t * reveldb_rpc_init();
+extern reveldb_rpc_t * reveldb_rpc_init(reveldb_config_t *config);
 
 extern void reveldb_rpc_run(reveldb_rpc_t *rpc);
 
