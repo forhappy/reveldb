@@ -58,6 +58,8 @@ struct reveldb_rpc_callbacks_s_ {
     evhttpx_callback_t  *rpc_kregex_cb;
     evhttpx_callback_t  *rpc_vregex_cb;
     evhttpx_callback_t  *rpc_similar_cb;
+    evhttpx_callback_t  *rpc_ksimilar_cb;
+    evhttpx_callback_t  *rpc_vsimilar_cb;
 
     /* update related operations. */
     evhttpx_callback_t  *rpc_incr_cb;

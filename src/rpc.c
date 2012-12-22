@@ -1729,11 +1729,9 @@ URI_rpc_seize_cb(evhttpx_request_t *req, void *userdata)
                      "Not Found", "Key value pair not found.");
         }
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
-        free(response);
     }
 
     return;
-
 }
 
 static void
@@ -1764,9 +1762,7 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -1774,11 +1770,9 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_query_param_sanity_check(req,
             &param_key_pattern, "kregex",
-            "You have to specify key's pattern to match.");
+            "You have to specify key pattern to match.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } else {
         key_pattern = _rpc_pattern_unescape(param_key_pattern);
@@ -1786,27 +1780,22 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_query_param_sanity_check(req,
             &param_val_pattern, "vregex",
-            "You have to specify value's pattern to match.");
+            "You have to specify value pattern to match.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } else {
         val_pattern = _rpc_pattern_unescape(param_val_pattern);
     }
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
+    _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
     key_pattern_buf.translate = 0; 
@@ -1852,11 +1841,9 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
 
-    free(response);
     evhttpx_kvs_free(kvs);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -1877,9 +1864,7 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -1889,25 +1874,20 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
             &param_key_pattern, "pattern",
             "You have to specify key pattern to match.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } else {
         pattern = _rpc_pattern_unescape(param_key_pattern);
     }
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
+    _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
     
@@ -1946,11 +1926,9 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
 
-    free(response);
     evhttpx_kvs_free(kvs);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -1971,9 +1949,7 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -1983,25 +1959,20 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
             &param_key_pattern, "pattern",
             "You have to specify value pattern to match.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } else {
         pattern = _rpc_pattern_unescape(param_key_pattern);
     }
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
+    _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
     
@@ -2038,11 +2009,8 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
-
-    free(response);
     evhttpx_kvs_free(kvs);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -2053,9 +2021,12 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
     unsigned int code = 0;
     bool is_quiet = false;
     char *response = NULL;
-    const char *similar = NULL;
-    const char *limit = NULL;
-    size_t nlimit = 0;
+    const char *ksimilar = NULL;
+    const char *vsimilar = NULL;
+    const char *kdistance = NULL;
+    const char *vdistance = NULL;
+    size_t klimit = 0;
+    size_t vlimit = 0;
     const char *dbname = NULL;
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
@@ -2063,55 +2034,68 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
     is_quiet = _rpc_query_quiet_check(req);
 
     response = _rpc_query_param_sanity_check(req,
-            &similar, "similar",
-            "You have to specify the similar value to match.");
+            &ksimilar, "ksimilar",
+            "You have to specify the similar key to match.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } 
-    
+
     response = _rpc_query_param_sanity_check(req,
-            &limit, "limit",
-            "You have to specify the distance limit of values to adopt.");
+            &vsimilar, "vsimilar",
+            "You have to specify the similar value to match.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    } 
+
+    response = _rpc_query_param_sanity_check(req,
+            &kdistance, "kdistance",
+            "You have to specify the distance of keys to adopt.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } else {
-        if (!safe_strtoul(limit, &nlimit)) {
+        if (!safe_strtoul(kdistance, &klimit)) {
             response = _rpc_jsonfy_response_on_error(req,
                     EVHTTPX_RES_BADREQ, "Bad Request",
-                    "Limit is not numerical.");
-            evbuffer_add_printf(req->buffer_out, "%s", response);
-            evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-            free(response);
+                    "Key distance is not numerical.");
+            _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+            return;
+        }
+    }
+    
+    response = _rpc_query_param_sanity_check(req,
+            &vdistance, "vdistance",
+            "You have to specify the distance of values to adopt.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    } else {
+        if (!safe_strtoul(vdistance, &vlimit)) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_BADREQ, "Bad Request",
+                    "Distance is not numerical.");
+            _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
             return;
         }
     }
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
+    _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
     
@@ -2121,14 +2105,197 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
     leveldb_iter_seek_to_first(iter);
     while(true) {
         if (!leveldb_iter_valid(iter)) break;
-        size_t distance = 0;
+        size_t key_len = -1;
+        size_t value_len = -1;
+        const char *key = leveldb_iter_key(iter, &key_len);
+        const char *value = NULL; 
+        if (_rpc_levenshtein(key, key_len,
+                        ksimilar, strlen(ksimilar)) <= klimit) {
+            value = leveldb_iter_key(iter, &value_len);
+            if (_rpc_levenshtein(value, value_len,
+                            vsimilar, strlen(vsimilar)) <= vlimit) {
+                evhttpx_kv_t *kv =
+                    evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
+                evhttpx_kvs_add_kv(kvs, kv);
+            }
+        }
+        leveldb_iter_next(iter);
+    }
+    leveldb_iter_destroy(iter);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_kvs(kvs);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
+    }
+
+    evhttpx_kvs_free(kvs);
+
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+    return;
+}
+
+static void
+URI_rpc_ksimilar_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *similar = NULL;
+    const char *distance = NULL;
+    size_t limit = 0;
+    const char *dbname = NULL;
+    evhttpx_kvs_t *kvs = evhttpx_kvs_new();
+
+    assert(kvs != NULL);
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &similar, "similar",
+            "You have to specify the similar value to match.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    } 
+    
+    response = _rpc_query_param_sanity_check(req,
+            &distance, "distance",
+            "You have to specify the distance of values to adopt.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    } else {
+        if (!safe_strtoul(distance, &limit)) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_BADREQ, "Bad Request",
+                    "Distance is not numerical.");
+            _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+            return;
+        }
+    }
+
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+    
+    leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
+            db->instance->roptions);
+
+    leveldb_iter_seek_to_first(iter);
+    while(true) {
+        if (!leveldb_iter_valid(iter)) break;
+        size_t key_len = -1;
+        size_t value_len = -1;
+        const char *key = leveldb_iter_key(iter, &key_len);
+        const char *value = NULL; 
+        if (_rpc_levenshtein(key, key_len,
+                        similar, strlen(similar)) <= limit) {
+            value = leveldb_iter_value(iter, &value_len);
+            evhttpx_kv_t *kv =
+                evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
+            evhttpx_kvs_add_kv(kvs, kv);
+        }
+        leveldb_iter_next(iter);
+    }
+    leveldb_iter_destroy(iter);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_kvs(kvs);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
+    }
+
+    evhttpx_kvs_free(kvs);
+
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+    return;
+}
+
+static void
+URI_rpc_vsimilar_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *similar = NULL;
+    const char *distance = NULL;
+    size_t limit = 0;
+    const char *dbname = NULL;
+    evhttpx_kvs_t *kvs = evhttpx_kvs_new();
+
+    assert(kvs != NULL);
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &similar, "similar",
+            "You have to specify the similar value to match.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    } 
+    
+    response = _rpc_query_param_sanity_check(req,
+            &distance, "distance",
+            "You have to specify the distance of values to adopt.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    } else {
+        if (!safe_strtoul(distance, &limit)) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_BADREQ, "Bad Request",
+                    "Distance is not numerical.");
+            _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+            return;
+        }
+    }
+
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+    
+    leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
+            db->instance->roptions);
+
+    leveldb_iter_seek_to_first(iter);
+    while(true) {
+        if (!leveldb_iter_valid(iter)) break;
         size_t key_len = -1;
         size_t value_len = -1;
         const char *key = NULL; 
         const char *value = leveldb_iter_value(iter, &value_len);
-        if ((distance = _rpc_levenshtein(value, value_len,
-                        similar, strlen(similar))) <= nlimit) {
-            LOG_DEBUG(("distance: %d", distance));
+        if (_rpc_levenshtein(value, value_len,
+                        similar, strlen(similar)) <= limit) {
             key = leveldb_iter_key(iter, &key_len);
             evhttpx_kv_t *kv =
                 evhttpx_kvlen_new(key, key_len, value, value_len, 1, 1);
@@ -2143,11 +2310,10 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
 
-    free(response);
     evhttpx_kvs_free(kvs);
+
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -3027,6 +3193,8 @@ reveldb_rpc_init()
     callbacks->rpc_kregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/kregex", URI_rpc_kregex_cb, NULL);
     callbacks->rpc_vregex_cb = evhttpx_set_cb(rpc->httpx, "/rpc/vregex", URI_rpc_vregex_cb, NULL);
     callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/similar", URI_rpc_similar_cb, NULL);
+    callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/ksimilar", URI_rpc_ksimilar_cb, NULL);
+    callbacks->rpc_similar_cb = evhttpx_set_cb(rpc->httpx, "/rpc/vsimilar", URI_rpc_vsimilar_cb, NULL);
 
     /* update related operations. */
     callbacks->rpc_incr_cb = evhttpx_set_cb(rpc->httpx, "/rpc/incr", URI_rpc_incr_cb, NULL);
@@ -3101,6 +3269,8 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
     evhttpx_callback_free(rpc->callbacks->rpc_kregex_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_vregex_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_similar_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_ksimilar_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_vsimilar_cb);
 
     evhttpx_callback_free(rpc->callbacks->rpc_incr_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_decr_cb);
