@@ -2,6 +2,7 @@
     "server": {
         "host": "0.0.0.0",
         "ports": "8087, 8088",
+        "https": true,
         "username": "root",
         "password": "root",
         "datadir": "/tmp/reveldb/",
@@ -25,5 +26,14 @@
     "log": {
         "level":"DEBUG",
         "stream": "logs/reveldb.log"
+    }
+    "ssl": {
+        "key": "conf/ssl/reveldb.pem",
+        "cert": "conf/ssl/reveldb.crt",
+        "capath": "conf/ssl/",
+        "ciphers": "RC4+RSA:HIGH:+MEDIUM:+LOW",
+        "ssl_ctx_timeout": 3600,
+        "verify_peer": true,
+        "verify_depth": 42
     }
 }
