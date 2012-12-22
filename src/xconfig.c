@@ -78,6 +78,7 @@ _xconfig_init_internal_config(const char *config)
     cJSON *server = NULL;
     cJSON *db = NULL;
     cJSON *log = NULL;
+    cJSON *ssl = NULL;
     cJSON *iter = NULL;
     reveldb_config_t *reveldb_config = NULL;
 
@@ -122,6 +123,17 @@ _xconfig_init_internal_config(const char *config)
             LOG_ERROR(("failed to make room for reveldb_log_config_t."));
             free(reveldb_config);
             free(server_config);
+            free(db_config);
+            cJSON_Delete(root);
+            return NULL;
+        }
+        reveldb_ssl_config_t *ssl_config =
+            (reveldb_ssl_config_t *) malloc(sizeof(reveldb_ssl_config_t));
+        if (ssl_config == NULL) {
+            LOG_ERROR(("failed to make room for reveldb_ssl_config_t."));
+            free(reveldb_config);
+            free(server_config);
+            free(db_config);
             free(log_config);
             cJSON_Delete(root);
             return NULL;
@@ -135,13 +147,25 @@ _xconfig_init_internal_config(const char *config)
         strncpy(server_config->host, iter->valuestring, config_vlen);
         config_vlen = -1;
 
-        iter = cJSON_GetObjectItem(server, "ports");
+        iter = cJSON_GetObjectItem(server, "rpcports");
         config_vlen = strlen(iter->valuestring);
-        server_config->ports =
+        server_config->rpcports =
             (char *) malloc(sizeof(char) * (config_vlen + 1));
-        memset(server_config->ports, 0, (config_vlen + 1));
-        strncpy(server_config->ports, iter->valuestring, config_vlen);
+        memset(server_config->rpcports, 0, (config_vlen + 1));
+        strncpy(server_config->rpcports, iter->valuestring, config_vlen);
         config_vlen = -1;
+
+        iter = cJSON_GetObjectItem(server, "restports");
+        config_vlen = strlen(iter->valuestring);
+        server_config->restports =
+            (char *) malloc(sizeof(char) * (config_vlen + 1));
+        memset(server_config->restports, 0, (config_vlen + 1));
+        strncpy(server_config->restports, iter->valuestring, config_vlen);
+        config_vlen = -1;
+
+        iter = cJSON_GetObjectItem(server, "https");
+        server_config->https =
+            (iter->valueint == 1) ? true : false;
 
         iter = cJSON_GetObjectItem(server, "username");
         config_vlen = strlen(iter->valuestring);
@@ -239,9 +263,53 @@ _xconfig_init_internal_config(const char *config)
         memset(log_config->stream, 0, (config_vlen + 1));
         strncpy(log_config->stream, iter->valuestring, config_vlen);
 
+        ssl = cJSON_GetObjectItem(root, "ssl");
+        
+        iter = cJSON_GetObjectItem(ssl, "key");
+        config_vlen = strlen(iter->valuestring);
+        ssl_config->key =
+            (char *) malloc(sizeof(char) * (config_vlen + 1));
+        memset(ssl_config->key, 0, (config_vlen + 1));
+        strncpy(ssl_config->key, iter->valuestring, config_vlen);
+        config_vlen = -1;
+
+        iter = cJSON_GetObjectItem(ssl, "cert");
+        config_vlen = strlen(iter->valuestring);
+        ssl_config->cert =
+            (char *) malloc(sizeof(char) * (config_vlen + 1));
+        memset(ssl_config->cert, 0, (config_vlen + 1));
+        strncpy(ssl_config->cert, iter->valuestring, config_vlen);
+        config_vlen = -1;
+
+        iter = cJSON_GetObjectItem(ssl, "capath");
+        config_vlen = strlen(iter->valuestring);
+        ssl_config->capath =
+            (char *) malloc(sizeof(char) * (config_vlen + 1));
+        memset(ssl_config->capath, 0, (config_vlen + 1));
+        strncpy(ssl_config->capath, iter->valuestring, config_vlen);
+        config_vlen = -1;
+
+        iter = cJSON_GetObjectItem(ssl, "ciphers");
+        config_vlen = strlen(iter->valuestring);
+        ssl_config->ciphers =
+            (char *) malloc(sizeof(char) * (config_vlen + 1));
+        memset(ssl_config->ciphers, 0, (config_vlen + 1));
+        strncpy(ssl_config->ciphers, iter->valuestring, config_vlen);
+        config_vlen = -1;
+
+        iter = cJSON_GetObjectItem(ssl, "ssl_ctx_timeout");
+        ssl_config->ssl_ctx_timeout = iter->valueint;
+
+        iter = cJSON_GetObjectItem(ssl, "verify_peer");
+        ssl_config->verify_peer = (iter->valueint == 1) ? true : false;
+
+        iter = cJSON_GetObjectItem(ssl, "verify_depth");
+        ssl_config->verify_depth = iter->valueint;
+
         reveldb_config->server_config = server_config;
         reveldb_config->db_config = db_config;
         reveldb_config->log_config = log_config;
+        reveldb_config->ssl_config = ssl_config;
 
         cJSON_Delete(root);
     }
@@ -272,10 +340,13 @@ reveldb_config_fini(reveldb_config_t * config)
         if (config->server_config->host != NULL) {
             free(config->server_config->host);
             config->server_config->host = NULL;
+        }if (config->server_config->rpcports != NULL) {
+            free(config->server_config->rpcports);
+            config->server_config->rpcports = NULL;
         }
-        if (config->server_config->ports != NULL) {
-            free(config->server_config->ports);
-            config->server_config->ports = NULL;
+        if (config->server_config->restports != NULL) {
+            free(config->server_config->restports);
+            config->server_config->restports = NULL;
         }
         if (config->server_config->username != NULL) {
             free(config->server_config->username);
@@ -314,6 +385,26 @@ reveldb_config_fini(reveldb_config_t * config)
             config->log_config->stream = NULL;
         }
         free(config->log_config);
+    }
+
+    if (config->ssl_config != NULL) {
+        if (config->ssl_config->key != NULL) {
+            free(config->ssl_config->key);
+            config->ssl_config->key = NULL;
+        }
+        if (config->ssl_config->cert != NULL) {
+            free(config->ssl_config->cert);
+            config->ssl_config->cert = NULL;
+        }
+        if (config->ssl_config->capath != NULL) {
+            free(config->ssl_config->capath);
+            config->ssl_config->capath = NULL;
+        }
+        if (config->ssl_config->ciphers != NULL) {
+            free(config->ssl_config->ciphers);
+            config->ssl_config->ciphers = NULL;
+        }
+        free(config->ssl_config);
     }
 
     free(config);

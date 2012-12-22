@@ -20,16 +20,20 @@ typedef struct reveldb_config_s_ reveldb_config_t;
 typedef struct reveldb_server_config_s_ reveldb_server_config_t;
 typedef struct reveldb_db_config_s_ reveldb_db_config_t;
 typedef struct reveldb_log_config_s_ reveldb_log_config_t;
+typedef struct reveldb_ssl_config_s_ reveldb_ssl_config_t;
 
 struct reveldb_config_s_ {
     reveldb_server_config_t *server_config;
     reveldb_db_config_t     *db_config;
     reveldb_log_config_t    *log_config;
+    reveldb_ssl_config_t    *ssl_config;
 };
 
 struct reveldb_server_config_s_ {
     char *host; /* reveldb server host. */
-    char *ports; /* bind port, reveldb can listen on multiple ports. */
+    char *rpcports; /* rpc protocol bind port, reveldb can listen on multiple ports. */
+    char *restports; /* REST protocol bind port, reveldb can listen on multiple ports. */
+    bool https; /* https enabled. */
     char *username; /* reveldb root username. */
     char *password; /* password. */
     char *datadir; /* data directory. */
@@ -56,6 +60,16 @@ struct reveldb_db_config_s_ {
 struct reveldb_log_config_s_ {
     char *level; /* reveldb log level. */
     char *stream; /* log stream: stdout, stderr or file. */
+};
+
+struct reveldb_ssl_config_s_ {
+    char *key;
+    char *cert;
+    char *capath;
+    char *ciphers;
+    unsigned int ssl_ctx_timeout;
+    bool verify_peer;
+    unsigned int verify_depth;
 };
 
 extern reveldb_config_t * reveldb_config_init(const char *file);

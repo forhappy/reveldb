@@ -1,7 +1,8 @@
 {
     "server": {
         "host": "0.0.0.0",
-        "ports": "8087, 8088",
+        "rpcports": "8087, 8088",
+        "restports": "8089, 9000",
         "https": true,
         "username": "root",
         "password": "root",
