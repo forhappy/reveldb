@@ -527,6 +527,38 @@ _rpc_proto_and_method_sanity_check(
     return NULL;
 }
 
+static char *
+_rpc_proto_and_method_sanity_check2nd(
+        int expected, /**< expected method. */
+        evhttpx_request_t *req,
+        unsigned int *code)
+{
+    assert(req != NULL);
+
+    /* HTTP protocol used */
+    evhttpx_proto proto = req->proto;
+    if (proto != evhttpx_PROTO_11) {
+        *code = EVHTTPX_RES_BADREQ;
+        return _rpc_jsonfy_response_on_sanity_check(
+                EVHTTPX_RES_BADREQ,
+                "Bad Request",
+                "Protocal error, you may have to use HTTP/1.1 to do request.");
+    }
+    /* request method. */
+    int method= evhttpx_request_get_method(req);
+    if (method != expected) {
+        *code = EVHTTPX_RES_METHNALLOWED;
+        return _rpc_jsonfy_response_on_sanity_check(
+                EVHTTPX_RES_METHNALLOWED,
+                "Method Not Allowed",
+                "HTTP method error, you may have to use the right method to do request.");
+
+    }
+
+    *code = EVHTTPX_RES_OK;
+    return NULL;
+}
+
 /* check the sanity of a query parameter, which is specified by @param_name,
  * if it is a valid request parameter, the pointer to it will be stored
  * in @param and return NULL, otherwise *@param will NULL but return error
@@ -585,10 +617,35 @@ _rpc_query_quiet_check(evhttpx_request_t *req)
     return false;
 }
 
+static void 
+_rpc_query_database_check(
+        evhttpx_request_t *req,
+        const char **dbname)
+{
+    assert(req != NULL);
+
+    evhttpx_query_t *query = req->uri->query;
+    *dbname = evhttpx_kv_find(query, "db");
+    return;
+}
+
 static char *
 _rpc_pattern_unescape(const char *pattern)
 {
     return safe_urldecode(pattern);
+}
+
+static void
+_rpc_send_reply(evhttpx_request_t *req,
+        char *response, unsigned int code)
+{
+    if (req == NULL) return;
+    if (response != NULL) {
+        evbuffer_add_printf(req->buffer_out, "%s", response);
+        evhttpx_send_reply(req, code);
+        free(response);
+    }
+    return;
 }
 
 static void 
@@ -600,9 +657,7 @@ URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -610,9 +665,7 @@ URI_rpc_void_cb(evhttpx_request_t *req, void *userdata)
             EVHTTPX_RES_OK,
             "OK",
             "Reveldb RPC is healthy! :-)");
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
-    free(response);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -632,9 +685,7 @@ URI_rpc_echo_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -656,11 +707,9 @@ URI_rpc_echo_cb(evhttpx_request_t *req, void *userdata)
     response = cJSON_PrintUnformatted(root);
 
     cJSON_Delete(root);
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, code);
-
     free(now);
-    free(response);
+
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -673,9 +722,7 @@ URI_rpc_head_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -683,9 +730,7 @@ URI_rpc_head_cb(evhttpx_request_t *req, void *userdata)
             EVHTTPX_RES_OK,
             "OK",
             "Reveldb RPC is healthy! :-)");
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
-    free(response);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -711,20 +756,16 @@ URI_rpc_property_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
     is_quiet = _rpc_query_quiet_check(req);
 
     response = _rpc_query_param_sanity_check(req,
-            &property, "property", "You have to specify what property to get.");
+            &property, "property", "Please specify valid leveldb property.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     } else {
         if (!(strcmp(property, "leveldb.stats")
@@ -733,24 +774,19 @@ URI_rpc_property_cb(evhttpx_request_t *req, void *userdata)
                     strlen("leveldb.num-files-at-level")))) {
             response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
                     "Bad Request", "Invalid leveldb property.");
-            evbuffer_add_printf(req->buffer_out, "%s", response);
-            evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-            free(response);
+            _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
             return;
         }
     }
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
+    _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
    
@@ -763,23 +799,19 @@ URI_rpc_property_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response_on_kv("property", content);
         }
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK); 
-
         free(content);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
         return;
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_response_on_error(req,
-                    EVHTTPX_RES_SERVERR, "Not Found", "Failed to get leveldb property.");
+                    EVHTTPX_RES_SERVERR, "Internal Server Error",
+                    "Failed to get leveldb property.");
         } else {
              response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
                      "Internal Server Error", "Failed to get leveldb property.");
         }
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR);
     }
 
     return;
@@ -796,9 +828,7 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
@@ -807,13 +837,11 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
     response = _rpc_query_param_sanity_check(req, &dbname, "db",
             "Database not specified, please check.");
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_BADREQ);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     }
 
-    /* init new leveldb instance and insert into reveldb. */
+    /* init new leveldb instance and insert it into reveldb. */
     reveldb_t *db = reveldb_init(dbname, reveldb_config);
     reveldb_insert_db(&reveldb, db);
 
@@ -821,16 +849,13 @@ URI_rpc_new_cb(evhttpx_request_t *req, void *userdata)
         if (is_quiet == true) {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         } else response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
-                "OK", "Create new leveldb instance done.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_OK);
-        free(response);
+                "OK", "Created new leveldb instance OK.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     } else {
         response = _rpc_jsonfy_response_on_error(req,
-                EVHTTPX_RES_SERVERR, "Internal Server Error", "Failed to create new leveldb instance.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_SERVERR);
-        free(response);
+                EVHTTPX_RES_SERVERR, "Internal Server Error",
+                "Failed to create new leveldb instance.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR);
     }
 
     return;
@@ -844,56 +869,45 @@ URI_rpc_compact_cb(evhttpx_request_t *req, void *userdata)
     bool is_quiet = false;
     char *response = NULL;
     const char *start_key = NULL;
-    const char *limit_key = NULL;
+    const char *end_key = NULL;
     const char *dbname = NULL;
-    
+    evhttpx_query_t *query = req->uri->query;
+
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, code);
-        free(response);
+        _rpc_send_reply(req, response, code);
         return;
     }
 
     is_quiet = _rpc_query_quiet_check(req);
 
-    _rpc_query_param_sanity_check(req,
-            &start_key, "start", "You have to specify start key "
-            "from which to do compact.");
-    
-    _rpc_query_param_sanity_check(req,
-            &limit_key, "limit", "You have to specify limit key "
-            "to end the compaction range.");
+    start_key = evhttpx_kv_find(query, "start");
+    end_key = evhttpx_kv_find(query, "end");
+    dbname = evhttpx_kv_find(query, "db");
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
    
+    /* do compaction. */
     leveldb_compact_range(
             db->instance->db,
             start_key, (start_key ? strlen(start_key) : 0),
-            limit_key, (limit_key ? strlen(limit_key) : 0));
+            end_key, (end_key ? strlen(end_key) : 0));
+
     if (is_quiet == false) {
         response = _rpc_jsonfy_general_response(
                 EVHTTPX_RES_OK, "OK", "Range compaction done.");
     } else {
         response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
     }
-    
-    evbuffer_add_printf(req->buffer_out, "%s", response);
-    evhttpx_send_reply(req, EVHTTPX_RES_OK);
-
-    free(response);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -929,17 +943,14 @@ URI_rpc_size_cb(evhttpx_request_t *req, void *userdata)
             &limit_key, "limit", "You have to specify limit key "
             "to end the compution.");
 
-    response = _rpc_query_param_sanity_check(req, &dbname, "db",
-            "Database not specified, use the default database.");
+    _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
     if (db == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Database not found, please check.");
-        evbuffer_add_printf(req->buffer_out, "%s", response);
-        evhttpx_send_reply(req, EVHTTPX_RES_NOTFOUND);
-        free(response);
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
 
