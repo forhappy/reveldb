@@ -28,6 +28,30 @@
 
 # define eq(x, y) (tolower(x) == tolower(y))
 
+static void
+_rpc_fill_ports(reveldb_rpc_t *rpc, const char *ports)
+{
+    assert(ports != NULL);
+
+    char *pch = NULL;
+    uint32_t port = 0;
+    size_t ports_len = strlen(ports);
+
+    rpc->num_ports = 0;
+
+    char *tmpports = (char *)malloc(sizeof(char) * (ports_len + 1));
+    memset(tmpports, 0, (ports_len + 1));
+    strncpy(tmpports, ports, ports_len);
+
+    pch = strtok(tmpports, ",");
+    while (pch != NULL) {
+        if (safe_strtoul(pch, &port)) {
+            rpc->ports[rpc->num_ports++] = port;
+        }
+        pch = strtok(NULL, ",");
+    }
+    return;
+}
 
 static unsigned int
 _rpc_levenshtein(const char *dst, size_t dst_len,
@@ -3018,6 +3042,7 @@ URI_rpc_version_cb(evhttpx_request_t *req, void *userdata)
     return;
 }
 
+
 reveldb_rpc_t *
 reveldb_rpc_init(reveldb_config_t *config)
 {
@@ -3126,18 +3151,28 @@ reveldb_rpc_init(reveldb_config_t *config)
     rpc->sslcfg = sslcfg;
     rpc->callbacks = callbacks;
     rpc->config = config;
+    _rpc_fill_ports(rpc, config->server_config->rpcports);
 
     return rpc;
 }
+
 
 void
 reveldb_rpc_run(reveldb_rpc_t *rpc)
 {
     assert(rpc != NULL);
+    int i;
+    reveldb_config_t *config = rpc->config;
 
-    evhttpx_ssl_init(rpc->httpx, rpc->sslcfg);
-    // evhttpx_bind_socket(rpc->httpx, "0.0.0.0", 8087, 1024);
-    evhttpx_bind_socket(rpc->httpx, "0.0.0.0", 9000, 1024);
+    if (rpc->config->server_config->https == true) {
+        evhttpx_ssl_init(rpc->httpx, rpc->sslcfg);
+    }
+    for (i = 0; i < rpc->num_ports; i++) {
+        evhttpx_bind_socket(rpc->httpx,
+                config->server_config->host,
+                rpc->ports[i],
+                config->server_config->backlog);
+    }
 
     event_base_loop(rpc->evbase, 0);
 }

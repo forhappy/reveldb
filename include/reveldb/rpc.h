@@ -82,7 +82,8 @@ struct reveldb_rpc_callbacks_s_ {
 
 struct reveldb_rpc_s_ {
     const char *host;
-    uint16_t ports[REVELDB_RPC_MAX_PORTS_LISTENING_ON];
+    uint32_t ports[REVELDB_RPC_MAX_PORTS_LISTENING_ON];
+    uint32_t num_ports;
     int backlog;
 
     evbase_t *evbase;

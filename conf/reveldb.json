@@ -28,7 +28,7 @@
     "log": {
         "level":"DEBUG",
         "stream": "logs/reveldb.log"
-    }
+    },
     "ssl": {
         "key": "conf/ssl/reveldb.pem",
         "cert": "conf/ssl/reveldb.crt",
