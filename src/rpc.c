@@ -3199,6 +3199,7 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
 
     evhttpx_free(rpc->httpx);
     event_base_free(rpc->evbase);
+    free(rpc->sslcfg);
     free(rpc->callbacks);
     free(rpc);
 }
