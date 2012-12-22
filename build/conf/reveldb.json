@@ -1,0 +1,41 @@
+{
+    "server": {
+        "host": "0.0.0.0",
+        "rpcports": "8087, 8088",
+        "restports": "8089, 9000",
+        "backlog": 1024,
+        "https": true,
+        "username": "root",
+        "password": "root",
+        "datadir": "/tmp/reveldb/",
+        "pidfile": "/tmp/reveldb/reveldb.pid"
+    },
+    "db": {
+        "dbname": "default",
+        "lru_cache_size": 65535,
+        "create_if_missing": true,
+        "error_if_exist": false,
+        "write_buffer_size": 65535,
+        "paranoid_checks": true,
+        "max_open_files": 1024,
+        "block_size": 65535,
+        "block_restart_interval": 16,
+        "compression": false,
+        "verify_checksums": false,
+        "fill_cache": false,
+        "sync": false
+    },
+    "log": {
+        "level":"DEBUG",
+        "stream": "logs/reveldb.log"
+    },
+    "ssl": {
+        "key": "conf/ssl/reveldb.pem",
+        "cert": "conf/ssl/reveldb.crt",
+        "capath": "conf/ssl/",
+        "ciphers": "RC4+RSA:HIGH:+MEDIUM:+LOW",
+        "ssl_ctx_timeout": 3600,
+        "verify_peer": true,
+        "verify_depth": 42
+    }
+}

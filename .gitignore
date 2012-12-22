@@ -23,8 +23,6 @@ CMakeCache.txt
 build/CMakeFiles/
 build/compat/
 build/src/
-build/conf/
-build/logs/
 
 # Vim swapfiles
 *.swp
