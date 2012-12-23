@@ -30,10 +30,13 @@
 #include "log.h"
 #include "utility.h"
 
-struct rb_root dbiter = RB_ROOT;
+struct rb_root dbiter       = RB_ROOT;
+struct rb_root dbsnapshot   = RB_ROOT;
+struct rb_root dbwritebatch = RB_ROOT;
+
 struct rb_root reveldb = RB_ROOT;
 
-reveldb_log_t *reveldb_log = NULL;
+reveldb_log_t *reveldb_log       = NULL;
 reveldb_config_t *reveldb_config = NULL;
 
 static void

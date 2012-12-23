@@ -88,6 +88,10 @@ struct reveldb_rpc_callbacks_s_ {
     evhttpx_callback_t  *rpc_iter_destroy_cb;
 
     /* snapshot related operations. */
+    evhttpx_callback_t  *rpc_snapshot_new_cb;
+    evhttpx_callback_t  *rpc_snapshot_release_cb;
+
+    /* snapshot related operations. */
 
     /* miscs operations. */
     evhttpx_callback_t  *rpc_sync_cb;

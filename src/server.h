@@ -18,6 +18,9 @@
 #include <reveldb/rpc.h>
 
 extern struct rb_root dbiter;
+extern struct rb_root dbsnapshot;
+extern struct rb_root dbwritebatch;
+
 extern struct rb_root reveldb;
 extern reveldb_config_t *reveldb_config;
 

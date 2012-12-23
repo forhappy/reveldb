@@ -3637,6 +3637,99 @@ URI_rpc_iter_destroy_cb(evhttpx_request_t *req, void *userdata)
 }
 
 static void
+URI_rpc_snapshot_new_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    afsUUID id;
+    char uuid_str[64] = {0};
+    char *response = NULL;
+    const char *dbname = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    uuid_create(&id);
+    uuid_to_string(&id, uuid_str, sizeof(uuid_str));
+    /* init new leveldb iterator and insert it into dbiter. */
+    xleveldb_snapshot_t *snapshot = xleveldb_init_snapshot(uuid_str, db);
+    xleveldb_insert_snapshot(&dbsnapshot, snapshot);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_iter(uuid_str);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_iter(uuid_str);
+    }
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+
+    return;
+}
+
+static void
+URI_rpc_snapshot_release_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *snapshot_id = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_iter_check(req, &snapshot_id);
+    if ((snapshot_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Snapshot ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_snapshot_t *snapshot =
+        xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+    if (snapshot == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Snapshot not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    xleveldb_free_snapshot(snapshot);
+    rb_erase(&(snapshot->node), &dbsnapshot);
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK, "OK",
+                "Iterator destroyed");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+    
+    return;
+}
+
+static void
 URI_rpc_clear_cb(evhttpx_request_t *req, void *userdata)
 {}
 
@@ -3882,6 +3975,7 @@ reveldb_rpc_init(reveldb_config_t *config)
     callbacks->rpc_remove_cb = evhttpx_set_cb(rpc->httpx, "/rpc/remove", URI_rpc_remove_cb, NULL);
     callbacks->rpc_clear_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/clear", URI_rpc_clear_cb, NULL);
 
+    /* iterator related operations. */
     callbacks->rpc_iter_new_cb      = evhttpx_set_cb(rpc->httpx, "/rpc/iter/new", URI_rpc_iter_new_cb, NULL);
     callbacks->rpc_iter_first_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/iter/first", URI_rpc_iter_first_cb, NULL);
     callbacks->rpc_iter_last_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/iter/last", URI_rpc_iter_last_cb, NULL);
@@ -3894,6 +3988,12 @@ reveldb_rpc_init(reveldb_config_t *config)
     callbacks->rpc_iter_value_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/iter/value", URI_rpc_iter_value_cb, NULL);
     callbacks->rpc_iter_kv_cb       = evhttpx_set_cb(rpc->httpx, "/rpc/iter/kv", URI_rpc_iter_kv_cb, NULL);
     callbacks->rpc_iter_destroy_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/iter/destroy", URI_rpc_iter_destroy_cb, NULL);
+
+    /* writebatch related operations. */
+
+    /* snapshot related operations. */
+    callbacks->rpc_snapshot_new_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/snapshot/new", URI_rpc_snapshot_new_cb, NULL);
+    callbacks->rpc_snapshot_release_cb = evhttpx_set_cb(rpc->httpx, "/rpc/snapshot/release", URI_rpc_snapshot_release_cb, NULL);
 
     /* miscs operations. */
     callbacks->rpc_sync_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/sync", URI_rpc_sync_cb, NULL);
