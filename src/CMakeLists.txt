@@ -16,6 +16,7 @@ SET(REVELDB_SRC
     rpc.c
     iter.c
     snapshot.c
+    writebatch.c
     rbtree.c
     splaytree.c
     tstring.c
