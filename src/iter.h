@@ -12,8 +12,8 @@
  *
  * =============================================================================
  */
-#ifndef _ENGINE_ITER_H_
-#define _ENGINE_ITER_H_
+#ifndef _XLEVELDB_ITER_H_
+#define _XLEVELDB_ITER_H_
 #include <reveldb/reveldb.h>
 
 struct rb_node;
@@ -56,4 +56,4 @@ extern const char* xleveldb_iter_value(const xleveldb_iter_t*, size_t* vlen);
 extern void xleveldb_iter_kv(const xleveldb_iter_t*,
         const char **key, size_t *klen,
         const char **value, size_t *vlen);
-#endif /* _ENGINE_ITER_H_ */
+#endif /* _XLEVELDB_ITER_H_ */

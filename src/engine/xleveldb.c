@@ -62,10 +62,7 @@ xleveldb_instance_init(xleveldb_config_t *config)
     instance->env = leveldb_create_default_env();
     instance->cache = leveldb_cache_create_lru(config->lru_cache_size);
     instance->filterpolicy = NULL;
-    instance->iterator = NULL;
     instance->logger = NULL;
-    instance->snapshot = NULL;
-    instance->writebatch = NULL;
 
     instance->options = leveldb_options_create();
     leveldb_options_set_error_if_exists(instance->options, config->error_if_exist);
@@ -114,18 +111,6 @@ xleveldb_instance_fini(xleveldb_instance_t *instance)
     if (instance->filterpolicy != NULL) {
         leveldb_filterpolicy_destroy(instance->filterpolicy);
         instance->filterpolicy = NULL;
-    }
-    if (instance->iterator != NULL) {
-        leveldb_iter_destroy(instance->iterator);
-        instance->iterator = NULL;
-    }
-    if (instance->snapshot != NULL) {
-        leveldb_release_snapshot(instance->db, instance->snapshot);
-        instance->snapshot = NULL;
-    }
-    if (instance->writebatch != NULL) {
-        leveldb_writebatch_destroy(instance->writebatch);
-        instance->writebatch = NULL;
     }
     if (instance->options != NULL) {
         leveldb_options_destroy(instance->options);

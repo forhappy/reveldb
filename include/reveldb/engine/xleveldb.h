@@ -57,12 +57,9 @@ struct xleveldb_instance_s_ {
     leveldb_comparator_t *comparator;
     leveldb_env_t *env;
     leveldb_filterpolicy_t *filterpolicy;
-    leveldb_iterator_t *iterator;
     leveldb_logger_t *logger;
     leveldb_options_t *options;
     leveldb_readoptions_t *roptions;
-    leveldb_snapshot_t *snapshot;
-    leveldb_writebatch_t *writebatch;
     leveldb_writeoptions_t *woptions;
 
     char *err;
