@@ -162,7 +162,14 @@ _rpc_jsonfy_quiet_response_on_kv_with_len(
 
     char *out = (char *)malloc(sizeof(char) * (total));
     memset(out, 0, total);
-    sprintf(out, "{\"%s\": \"%s\"}", key, value);
+
+    // FIXME: this is very tricky, constructing response 
+    // by concatenating pieces of str.
+    strncpy(out, "{\"", 2);
+    strncpy(out + 2, key, key_len);
+    strncpy(out + 2 + key_len, "\": \"", 4);
+    strncpy(out + 2 + key_len + 4, value, value_len);
+    strncpy(out + 2 + key_len + 4 + value_len, "\"}", 2);
 
     return out;
 }
