@@ -3026,6 +3026,7 @@ URI_rpc_iter_first_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3033,8 +3034,8 @@ URI_rpc_iter_first_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3081,6 +3082,7 @@ URI_rpc_iter_last_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3088,8 +3090,8 @@ URI_rpc_iter_last_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3135,6 +3137,7 @@ URI_rpc_iter_next_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3142,8 +3145,8 @@ URI_rpc_iter_next_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3189,6 +3192,7 @@ URI_rpc_iter_prev_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3196,8 +3200,8 @@ URI_rpc_iter_prev_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3260,6 +3264,7 @@ URI_rpc_iter_forward_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3267,8 +3272,8 @@ URI_rpc_iter_forward_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3331,6 +3336,7 @@ URI_rpc_iter_backward_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3338,8 +3344,8 @@ URI_rpc_iter_backward_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3393,6 +3399,7 @@ URI_rpc_iter_seek_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     } else {
         if (is_quiet == false) {
             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
@@ -3400,8 +3407,8 @@ URI_rpc_iter_seek_cb(evhttpx_request_t *req, void *userdata)
         } else {
             response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
         }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
     return;
 }
@@ -3409,20 +3416,224 @@ URI_rpc_iter_seek_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_iter_key_cb(evhttpx_request_t *req, void *userdata)
 {
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *iter_id = NULL;
+    const char *key = NULL;
+    unsigned int key_len = 0;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
 
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_iter_check(req, &iter_id);
+    if ((iter_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Iterator ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_iter_t *iter = xleveldb_search_iter(&dbiter, iter_id);
+    if (iter == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Iterator not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    key = xleveldb_iter_key(iter, &key_len);
+    if (key != NULL) {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_kv_with_len(
+                    "key", 3, key, key_len);
+        } else {
+            response = _rpc_jsonfy_quiet_response_on_kv_with_len(
+                    "key", 3, key, key_len);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                    "Internal Server Error", "Invalid iterator.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
+    }
+
+    return;
 }
 
 static void
 URI_rpc_iter_value_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *iter_id = NULL;
+    const char *value = NULL;
+    unsigned int value_len = 0;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_iter_check(req, &iter_id);
+    if ((iter_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Iterator ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_iter_t *iter = xleveldb_search_iter(&dbiter, iter_id);
+    if (iter == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Iterator not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    value = xleveldb_iter_value(iter, &value_len);
+    if (value != NULL) {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_kv_with_len(
+                    "value", 5, value, value_len);
+        } else {
+            response = _rpc_jsonfy_quiet_response_on_kv_with_len(
+                    "value", 5, value, value_len);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                    "Internal Server Error", "Invalid iterator.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
+    }
+
+    return;
+}
 
 static void
 URI_rpc_iter_kv_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *iter_id = NULL;
+    const char *key = NULL;
+    unsigned int key_len = 0;
+    const char *value = NULL;
+    unsigned int value_len = 0;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_iter_check(req, &iter_id);
+    if ((iter_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Iterator ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_iter_t *iter = xleveldb_search_iter(&dbiter, iter_id);
+    if (iter == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Iterator not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    xleveldb_iter_kv(iter, &key, &key_len, &value, &value_len);
+    if (key != NULL && value != NULL) {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_kv_with_len(
+                    key, key_len, value, value_len);
+        } else {
+            response = _rpc_jsonfy_quiet_response_on_kv_with_len(
+                    key, key_len, value, value_len);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                    "Internal Server Error", "Invalid iterator.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_SERVERR);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR); 
+    }
+
+    return;
+}
 
 static void
 URI_rpc_iter_destroy_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *response = NULL;
+    const char *iter_id = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_iter_check(req, &iter_id);
+    if ((iter_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Iterator ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_iter_t *iter = xleveldb_search_iter(&dbiter, iter_id);
+    if (iter == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Iterator not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    xleveldb_free_iter(iter);
+    rb_erase(&(iter->node), &dbiter);
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK, "OK",
+                "Iterator destroyed");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+    
+    return;
+}
 
 static void
 URI_rpc_clear_cb(evhttpx_request_t *req, void *userdata)
