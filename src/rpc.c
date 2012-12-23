@@ -3451,8 +3451,8 @@ URI_rpc_iter_key_cb(evhttpx_request_t *req, void *userdata)
     key = xleveldb_iter_key(iter, &key_len);
     if (key != NULL) {
         if (is_quiet == false) {
-            response = _rpc_jsonfy_response_on_kv_with_len(
-                    "key", 3, key, key_len);
+            response = _rpc_jsonfy_msgalt_response_on_kv_with_len(
+                    "key", 3, key, key_len, "Get the key of current iterator.");
         } else {
             response = _rpc_jsonfy_quiet_response_on_kv_with_len(
                     "key", 3, key, key_len);
@@ -3509,8 +3509,8 @@ URI_rpc_iter_value_cb(evhttpx_request_t *req, void *userdata)
     value = xleveldb_iter_value(iter, &value_len);
     if (value != NULL) {
         if (is_quiet == false) {
-            response = _rpc_jsonfy_response_on_kv_with_len(
-                    "value", 5, value, value_len);
+            response = _rpc_jsonfy_msgalt_response_on_kv_with_len(
+                    "value", 5, value, value_len, "Get the value of current iterator.");
         } else {
             response = _rpc_jsonfy_quiet_response_on_kv_with_len(
                     "value", 5, value, value_len);
