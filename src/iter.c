@@ -128,7 +128,7 @@ xleveldb_iter_seek_to_last(xleveldb_iter_t *iter)
 void
 xleveldb_iter_seek(
         xleveldb_iter_t *iter,
-        const char* k, size_t klen)
+        const char *k, size_t klen)
 {
     leveldb_iter_seek(iter->iter, k, klen);
     return;
