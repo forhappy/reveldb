@@ -21,10 +21,12 @@
 #include <regex/regex.h>
 
 #include "log.h"
+#include "iter.h"
 #include "cJSON.h"
 #include "tstring.h"
 #include "server.h"
 #include "utility.h"
+#include "uuid/uuid.h"
 
 # define eq(x, y) (tolower(x) == tolower(y))
 
@@ -227,6 +229,47 @@ _rpc_jsonfy_response_on_kv_with_len(
     cJSON_AddStringToObject(root, "date", now);
     cJSON_AddItemToObject(root, "kv", kv);
     cJSON_AddStringToObjectWithLength(kv, key, key_len, value, value_len);
+    // out = cJSON_Print(root);
+    /* unformatted json has less data. */
+    out = cJSON_PrintUnformatted(root);
+
+    free(now);
+    cJSON_Delete(root);
+    return out;
+}
+
+static char *
+_rpc_jsonfy_quiet_response_on_iter(const char *uuid)
+{
+    assert(uuid != NULL);
+
+    size_t extra_sapce = 64;
+    size_t uuid_len = strlen(uuid);
+    size_t total = extra_sapce + uuid_len;
+
+    char *out = (char *)malloc(sizeof(char) * (total));
+    memset(out, 0, total);
+    sprintf(out, "{\"%s\": \"%s\"}", "id", uuid);
+
+    return out;
+}
+
+static char *
+_rpc_jsonfy_response_on_iter(const char *uuid)
+{
+    assert(uuid != NULL);
+    char *out = NULL;
+    char *now = gmttime_now();
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *kv = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "code", EVHTTPX_RES_OK);
+    cJSON_AddStringToObject(root, "status", "OK");
+    cJSON_AddStringToObject(root, "message", "Create new iterator done.");
+    cJSON_AddStringToObject(root, "date", now);
+    cJSON_AddItemToObject(root, "iter", kv);
+    cJSON_AddStringToObject(kv, "id", uuid);
     // out = cJSON_Print(root);
     /* unformatted json has less data. */
     out = cJSON_PrintUnformatted(root);
@@ -2885,7 +2928,49 @@ URI_rpc_remove_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_iter_new_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    afsUUID id;
+    char uuid_str[64] = {0};
+    char *response = NULL;
+    const char *dbname = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    uuid_create(&id);
+    uuid_to_string(&id, uuid_str, sizeof(uuid_str));
+    /* init new leveldb iterator and insert it into dbiter. */
+    xleveldb_iter_t *iter = xleveldb_init_iter(uuid_str, db);
+    xleveldb_insert_iter(&dbiter, iter);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_response_on_iter(uuid_str);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_iter(uuid_str);
+    }
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
+
+    return;
+}
 
 static void
 URI_rpc_iter_first_cb(evhttpx_request_t *req, void *userdata)

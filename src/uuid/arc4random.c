@@ -43,14 +43,8 @@ unsigned int
 arc4random(void)
 {
     unsigned int r = 0;
-    static int first_time = 1;
 
     if (rc4_ready <= 0) {
-#if 0
-        if (first_time)
-            seed_rng();
-#endif
-        first_time = 0;
         arc4random_stir();
     }
 

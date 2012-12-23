@@ -20,7 +20,7 @@
 #include "iter.h"
 
 xleveldb_iter_t *
-xleveldb_iter_init(const char *uuid, reveldb_t *reveldb)
+xleveldb_init_iter(const char *uuid, reveldb_t *reveldb)
 {
     assert(uuid != NULL);
     assert(reveldb != NULL);

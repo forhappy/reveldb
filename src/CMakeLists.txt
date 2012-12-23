@@ -5,14 +5,16 @@ SET(REVELDB_SRC
     evhttpx/evthr/evthr.c
     evhttpx/httpparser/http-parser.c
     engine/xleveldb.c
-    engine/iter.c
     regex/regex.c
+    uuid/arc4random.c
+    uuid/uuid.c
     server.c
     reveldb.c
     cJSON.c
     xconfig.c
     log.c
     rpc.c
+    iter.c
     rbtree.c
     splaytree.c
     tstring.c

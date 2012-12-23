@@ -239,7 +239,7 @@ uuid_to_string(const afsUUID * uuid, char *str, size_t strsz)
              (unsigned char) uuid->node[4], (unsigned char) uuid->node[5]);
 }
 
-#ifdef TEST
+#ifdef _UUID_TEST_
 int
 main(int argc, char **argv)
 {
