@@ -73,6 +73,22 @@ struct reveldb_rpc_callbacks_s_ {
     evhttpx_callback_t  *rpc_remove_cb;
     evhttpx_callback_t  *rpc_clear_cb;
 
+    /* iterator related operations. */
+    evhttpx_callback_t  *rpc_iter_new_cb;
+    evhttpx_callback_t  *rpc_iter_first_cb;
+    evhttpx_callback_t  *rpc_iter_last_cb;
+    evhttpx_callback_t  *rpc_iter_next_cb;
+    evhttpx_callback_t  *rpc_iter_prev_cb;
+    evhttpx_callback_t  *rpc_iter_forward_cb;
+    evhttpx_callback_t  *rpc_iter_backward_cb;
+    evhttpx_callback_t  *rpc_iter_seek_cb;
+    evhttpx_callback_t  *rpc_iter_key_cb;
+    evhttpx_callback_t  *rpc_iter_value_cb;
+    evhttpx_callback_t  *rpc_iter_kv_cb;
+    evhttpx_callback_t  *rpc_iter_destroy_cb;
+
+    /* snapshot related operations. */
+
     /* miscs operations. */
     evhttpx_callback_t  *rpc_sync_cb;
     evhttpx_callback_t  *rpc_check_cb;

@@ -2881,13 +2881,59 @@ URI_rpc_remove_cb(evhttpx_request_t *req, void *userdata)
     }
 
     return;
-
 }
+
+static void
+URI_rpc_iter_new_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_first_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_last_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_next_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_prev_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_forward_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_backward_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_seek_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_key_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_value_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_kv_cb(evhttpx_request_t *req, void *userdata)
+{}
+
+static void
+URI_rpc_iter_destroy_cb(evhttpx_request_t *req, void *userdata)
+{}
 
 static void
 URI_rpc_clear_cb(evhttpx_request_t *req, void *userdata)
 {}
-
 
 static void
 URI_rpc_sync_cb(evhttpx_request_t *req, void *userdata)
@@ -3131,6 +3177,19 @@ reveldb_rpc_init(reveldb_config_t *config)
     callbacks->rpc_remove_cb = evhttpx_set_cb(rpc->httpx, "/rpc/remove", URI_rpc_remove_cb, NULL);
     callbacks->rpc_clear_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/clear", URI_rpc_clear_cb, NULL);
 
+    callbacks->rpc_iter_new_cb      = evhttpx_set_cb(rpc->httpx, "/rpc/iter/new", URI_rpc_iter_new_cb, NULL);
+    callbacks->rpc_iter_first_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/iter/first", URI_rpc_iter_first_cb, NULL);
+    callbacks->rpc_iter_last_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/iter/last", URI_rpc_iter_last_cb, NULL);
+    callbacks->rpc_iter_next_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/iter/next", URI_rpc_iter_next_cb, NULL);
+    callbacks->rpc_iter_prev_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/iter/prev", URI_rpc_iter_prev_cb, NULL);
+    callbacks->rpc_iter_forward_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/iter/forward", URI_rpc_iter_forward_cb, NULL);
+    callbacks->rpc_iter_backward_cb = evhttpx_set_cb(rpc->httpx, "/rpc/iter/backward", URI_rpc_iter_backward_cb, NULL);
+    callbacks->rpc_iter_seek_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/iter/seek", URI_rpc_iter_seek_cb, NULL);
+    callbacks->rpc_iter_key_cb      = evhttpx_set_cb(rpc->httpx, "/rpc/iter/key", URI_rpc_iter_key_cb, NULL);
+    callbacks->rpc_iter_value_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/iter/value", URI_rpc_iter_value_cb, NULL);
+    callbacks->rpc_iter_kv_cb       = evhttpx_set_cb(rpc->httpx, "/rpc/iter/kv", URI_rpc_iter_kv_cb, NULL);
+    callbacks->rpc_iter_destroy_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/iter/destroy", URI_rpc_iter_destroy_cb, NULL);
+
     /* miscs operations. */
     callbacks->rpc_sync_cb    = evhttpx_set_cb(rpc->httpx, "/rpc/sync", URI_rpc_sync_cb, NULL);
     callbacks->rpc_check_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/check", URI_rpc_check_cb, NULL);
@@ -3234,6 +3293,19 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
     evhttpx_callback_free(rpc->callbacks->rpc_remove_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_clear_cb);
 
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_new_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_first_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_last_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_next_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_prev_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_forward_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_backward_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_seek_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_key_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_value_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_kv_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_iter_destroy_cb);
+    
     evhttpx_callback_free(rpc->callbacks->rpc_sync_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_check_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_exists_cb);

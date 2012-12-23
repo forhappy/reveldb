@@ -5,6 +5,7 @@ SET(REVELDB_SRC
     evhttpx/evthr/evthr.c
     evhttpx/httpparser/http-parser.c
     engine/xleveldb.c
+    engine/iter.c
     regex/regex.c
     server.c
     reveldb.c
