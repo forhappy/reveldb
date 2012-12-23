@@ -92,16 +92,11 @@ void
 xleveldb_free_iter(xleveldb_iter_t *iter)
 {
     if (iter != NULL) {
-        if (iter->uuid != NULL) {
-            free(iter->uuid);
-            iter->uuid = NULL;
-        }
         if (iter->iter != NULL) {
             leveldb_iter_destroy(iter->iter);
             iter->iter = NULL;
         }
         free(iter);
-        iter = NULL;
     }
 }
 

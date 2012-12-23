@@ -15,6 +15,7 @@ SET(REVELDB_SRC
     log.c
     rpc.c
     iter.c
+    snapshot.c
     rbtree.c
     splaytree.c
     tstring.c

@@ -22,6 +22,7 @@
 
 #include "log.h"
 #include "iter.h"
+#include "snapshot.h"
 #include "cJSON.h"
 #include "tstring.h"
 #include "server.h"
