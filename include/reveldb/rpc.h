@@ -91,7 +91,12 @@ struct reveldb_rpc_callbacks_s_ {
     evhttpx_callback_t  *rpc_snapshot_new_cb;
     evhttpx_callback_t  *rpc_snapshot_release_cb;
 
-    /* snapshot related operations. */
+    /* writebatch related operations. */
+    evhttpx_callback_t  *rpc_writebatch_new_cb;
+    evhttpx_callback_t  *rpc_writebatch_put_cb;
+    evhttpx_callback_t  *rpc_writebatch_delete_cb;
+    evhttpx_callback_t  *rpc_writebatch_clear_cb;
+    evhttpx_callback_t  *rpc_writebatch_destroy_cb;
 
     /* miscs operations. */
     evhttpx_callback_t  *rpc_sync_cb;
