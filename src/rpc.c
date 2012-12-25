@@ -699,6 +699,18 @@ _rpc_query_iter_check(
     return;
 }
 
+static void 
+_rpc_query_snapshot_check(
+        evhttpx_request_t *req,
+        const char **dbname)
+{
+    assert(req != NULL);
+
+    evhttpx_query_t *query = req->uri->query;
+    *dbname = evhttpx_kv_find(query, "snapshot");
+    return;
+}
+
 static char *
 _rpc_pattern_unescape(const char *pattern)
 {
@@ -1652,6 +1664,9 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
     char *response = NULL;
     const char *key = NULL;
     const char *dbname = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     unsigned int value_len = 0;
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
@@ -1669,6 +1684,7 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
 
+
     _rpc_query_database_check(req, &dbname);
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
@@ -1680,9 +1696,21 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
    
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     value = leveldb_get(
             db->instance->db,
-            db->instance->roptions,
+            (snapshot == NULL) ? db->instance->roptions : roptions,
             key, strlen(key),
             &value_len,
             &(db->instance->err));
@@ -1705,6 +1733,11 @@ URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
                      "Not Found", "Key not found.");
         }
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+    }
+    
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
     }
 
     return;
@@ -1823,6 +1856,9 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
     struct re_pattern_buffer val_pattern_buf;
     const char *param_key_pattern = NULL;
     const char *param_val_pattern = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     const char *dbname = NULL;
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
@@ -1866,6 +1902,19 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
+
+     _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     key_pattern_buf.translate = 0; 
     key_pattern_buf.fastmap = 0;
     key_pattern_buf.buffer = 0;
@@ -1881,7 +1930,7 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
     re_compile_pattern(val_pattern, strlen(val_pattern), &val_pattern_buf);
 
     leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
-            db->instance->roptions);
+            (snapshot == NULL) ? db->instance->roptions : roptions);
 
     leveldb_iter_seek_to_first(iter);
     while(true) {
@@ -1910,6 +1959,11 @@ URI_rpc_regex_cb(evhttpx_request_t *req, void *userdata)
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
 
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
+
     evhttpx_kvs_free(kvs);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
@@ -1925,6 +1979,9 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
     char *pattern = NULL;
     struct re_pattern_buffer pattern_buf;
     const char *param_key_pattern = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     const char *dbname = NULL;
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
@@ -1958,7 +2015,19 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
-    
+
+     _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+  
     pattern_buf.translate = 0; 
     pattern_buf.fastmap = 0;
     pattern_buf.buffer = 0;
@@ -1967,7 +2036,7 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
     re_compile_pattern(pattern, strlen(pattern), &pattern_buf);
 
     leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
-            db->instance->roptions);
+            (snapshot == NULL) ? db->instance->roptions : roptions);
 
     leveldb_iter_seek_to_first(iter);
     while(true) {
@@ -1995,6 +2064,11 @@ URI_rpc_kregex_cb(evhttpx_request_t *req, void *userdata)
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
 
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
+
     evhttpx_kvs_free(kvs);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
@@ -2010,6 +2084,9 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
     char *pattern = NULL;
     struct re_pattern_buffer pattern_buf;
     const char *param_key_pattern = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     const char *dbname = NULL;
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
@@ -2043,7 +2120,18 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
-    
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     pattern_buf.translate = 0; 
     pattern_buf.fastmap = 0;
     pattern_buf.buffer = 0;
@@ -2052,7 +2140,7 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
     re_compile_pattern(pattern, strlen(pattern), &pattern_buf);
 
     leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
-            db->instance->roptions);
+            (snapshot == NULL) ? db->instance->roptions : roptions);
 
     leveldb_iter_seek_to_first(iter);
     while(true) {
@@ -2077,6 +2165,12 @@ URI_rpc_vregex_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
+
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
+
     evhttpx_kvs_free(kvs);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
@@ -2095,6 +2189,9 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
     const char *vdistance = NULL;
     size_t klimit = 0;
     size_t vlimit = 0;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     const char *dbname = NULL;
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
@@ -2167,8 +2264,20 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
     
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
-            db->instance->roptions);
+            (snapshot == NULL) ? db->instance->roptions : roptions);
 
     leveldb_iter_seek_to_first(iter);
     while(true) {
@@ -2197,8 +2306,12 @@ URI_rpc_similar_cb(evhttpx_request_t *req, void *userdata)
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
 
-    evhttpx_kvs_free(kvs);
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
 
+    evhttpx_kvs_free(kvs);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
@@ -2212,8 +2325,12 @@ URI_rpc_ksimilar_cb(evhttpx_request_t *req, void *userdata)
     char *response = NULL;
     const char *similar = NULL;
     const char *distance = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     size_t limit = 0;
     const char *dbname = NULL;
+ 
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
 
     assert(kvs != NULL);
@@ -2261,8 +2378,20 @@ URI_rpc_ksimilar_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
     
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
-            db->instance->roptions);
+            (snapshot == NULL) ? db->instance->roptions : roptions);
 
     leveldb_iter_seek_to_first(iter);
     while(true) {
@@ -2288,8 +2417,12 @@ URI_rpc_ksimilar_cb(evhttpx_request_t *req, void *userdata)
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
 
-    evhttpx_kvs_free(kvs);
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
 
+    evhttpx_kvs_free(kvs);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
@@ -2303,6 +2436,9 @@ URI_rpc_vsimilar_cb(evhttpx_request_t *req, void *userdata)
     char *response = NULL;
     const char *similar = NULL;
     const char *distance = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
     size_t limit = 0;
     const char *dbname = NULL;
     evhttpx_kvs_t *kvs = evhttpx_kvs_new();
@@ -2352,8 +2488,20 @@ URI_rpc_vsimilar_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
     
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     leveldb_iterator_t* iter = leveldb_create_iterator(db->instance->db,
-            db->instance->roptions);
+            (snapshot == NULL) ? db->instance->roptions : roptions);
 
     leveldb_iter_seek_to_first(iter);
     while(true) {
@@ -2379,8 +2527,12 @@ URI_rpc_vsimilar_cb(evhttpx_request_t *req, void *userdata)
         response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
     }
 
-    evhttpx_kvs_free(kvs);
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
 
+    evhttpx_kvs_free(kvs);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
@@ -2949,6 +3101,10 @@ URI_rpc_iter_new_cb(evhttpx_request_t *req, void *userdata)
     afsUUID id;
     char uuid_str[64] = {0};
     char *response = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
+
     const char *dbname = NULL;
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
@@ -2969,11 +3125,23 @@ URI_rpc_iter_new_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
 
     uuid_create(&id);
     uuid_to_string(&id, uuid_str, sizeof(uuid_str));
     /* init new leveldb iterator and insert it into dbiter. */
-    xleveldb_iter_t *iter = xleveldb_init_iter(uuid_str, db);
+    xleveldb_iter_t *iter = xleveldb_init_iter(uuid_str, db, roptions,
+            (snapshot == NULL) ? false : true);
     xleveldb_insert_iter(&dbiter, iter);
 
     if (is_quiet == false) {
@@ -3856,6 +4024,10 @@ URI_rpc_check_cb(evhttpx_request_t *req, void *userdata)
     char *response = NULL;
     const char *key = NULL;
     const char *dbname = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
+
     unsigned int value_len = 0;
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
@@ -3883,10 +4055,22 @@ URI_rpc_check_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
-   
+
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     value = leveldb_get(
             db->instance->db,
-            db->instance->roptions,
+            (snapshot == NULL) ? db->instance->roptions : roptions,
             key, strlen(key),
             &value_len,
             &(db->instance->err));
@@ -3909,6 +4093,11 @@ URI_rpc_check_cb(evhttpx_request_t *req, void *userdata)
         }
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
     }
+    
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
 
     return;
 }
@@ -3923,6 +4112,10 @@ URI_rpc_exists_cb(evhttpx_request_t *req, void *userdata)
     char *response = NULL;
     const char *key = NULL;
     const char *dbname = NULL;
+    const char *snapshot_id = NULL;
+    xleveldb_snapshot_t *snapshot = NULL;
+    leveldb_readoptions_t *roptions = NULL;
+
     unsigned int value_len = 0;
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
@@ -3950,10 +4143,22 @@ URI_rpc_exists_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
-   
+
+    _rpc_query_snapshot_check(req, &snapshot_id);
+    if (snapshot_id != NULL) {
+        snapshot = xleveldb_search_snapshot(&dbsnapshot, snapshot_id);
+        roptions = leveldb_readoptions_create();
+        leveldb_readoptions_set_verify_checksums(roptions,
+                reveldb_config->db_config->verify_checksums);
+        leveldb_readoptions_set_fill_cache(roptions,
+                reveldb_config->db_config->fill_cache);
+        leveldb_readoptions_set_snapshot(roptions,
+                snapshot->snapshot);
+    }
+
     value = leveldb_get(
             db->instance->db,
-            db->instance->roptions,
+            (snapshot == NULL) ? db->instance->roptions :roptions ,
             key, strlen(key),
             &value_len,
             &(db->instance->err));
@@ -3976,6 +4181,10 @@ URI_rpc_exists_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
     }
 
+    if (snapshot != NULL) {
+        leveldb_readoptions_set_snapshot(roptions, NULL);
+        leveldb_readoptions_destroy(roptions);
+    }
     return;
 }
 

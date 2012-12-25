@@ -20,7 +20,8 @@
 #include "iter.h"
 
 xleveldb_iter_t *
-xleveldb_init_iter(const char *uuid, reveldb_t *reveldb)
+xleveldb_init_iter(const char *uuid, reveldb_t *reveldb,
+        leveldb_readoptions_t *external_roptions, bool use_external_roptions)
 {
     assert(uuid != NULL);
     assert(reveldb != NULL);
@@ -31,8 +32,9 @@ xleveldb_init_iter(const char *uuid, reveldb_t *reveldb)
     iter->uuid = (char *)iter + sizeof(xleveldb_iter_t);
     memcpy(iter->uuid, uuid, uuid_len);
     iter->reveldb = reveldb;
+    iter->external_roptions = external_roptions;
     iter->iter = leveldb_create_iterator(reveldb->instance->db,
-            reveldb->instance->roptions);
+            (use_external_roptions == false) ? reveldb->instance->roptions : external_roptions);
     leveldb_iter_seek_to_first(iter->iter);
     return iter;
 }
@@ -95,6 +97,10 @@ xleveldb_free_iter(xleveldb_iter_t *iter)
         if (iter->iter != NULL) {
             leveldb_iter_destroy(iter->iter);
             iter->iter = NULL;
+        }
+        if (iter->external_roptions != NULL) {
+            leveldb_readoptions_destroy(iter->external_roptions);
+            iter->external_roptions = NULL;
         }
         free(iter);
     }

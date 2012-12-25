@@ -24,12 +24,17 @@ struct xleveldb_iter_s_ {
     char *uuid;
     leveldb_iterator_t *iter;
     reveldb_t *reveldb;
+    /* external_roptions is used when and only when iterate on snapshot. */
+    leveldb_readoptions_t *external_roptions;
     struct rb_node node;
 };
 
 extern xleveldb_iter_t * xleveldb_init_iter(
         const char *uuid,
-        reveldb_t *reveldb);
+        reveldb_t *reveldb,
+        leveldb_readoptions_t *external_roptions,
+        bool use_external_roptions
+        );
 
 extern xleveldb_iter_t * xleveldb_search_iter(
         struct rb_root *root,
