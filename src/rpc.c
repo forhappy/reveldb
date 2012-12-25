@@ -695,7 +695,7 @@ _rpc_query_iter_check(
     assert(req != NULL);
 
     evhttpx_query_t *query = req->uri->query;
-    *dbname = evhttpx_kv_find(query, "id");
+    *dbname = evhttpx_kv_find(query, "iter");
     return;
 }
 
@@ -708,6 +708,18 @@ _rpc_query_snapshot_check(
 
     evhttpx_query_t *query = req->uri->query;
     *dbname = evhttpx_kv_find(query, "snapshot");
+    return;
+}
+
+static void 
+_rpc_query_batch_check(
+        evhttpx_request_t *req,
+        const char **dbname)
+{
+    assert(req != NULL);
+
+    evhttpx_query_t *query = req->uri->query;
+    *dbname = evhttpx_kv_find(query, "batch");
     return;
 }
 
@@ -3947,11 +3959,126 @@ URI_rpc_writebatch_new_cb(evhttpx_request_t *req, void *userdata)
 static void
 URI_rpc_writebatch_put_cb(evhttpx_request_t *req, void *userdata)
 {
+    /* json formatted response. */
+    unsigned int code = 0;
+    const char *key = NULL;
+    const char *value = NULL;
+    const char *batch_id = NULL;
+    bool is_quiet = false;
+    char *response = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &key, "key", "Please specify which key to set.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+    
+    response = _rpc_query_param_sanity_check(req, &value, "value",
+            "Please set value along with the key you've specified.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    _rpc_query_batch_check(req, &batch_id);
+    if ((batch_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Batch ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_writebatch_t *batch =
+        xleveldb_search_writebatch(&dbwritebatch, batch_id);
+    if (batch == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Batch not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+
+    leveldb_writebatch_put(
+            batch->writebatch,
+            key, strlen(key),
+            value, strlen(value));
+    
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                "OK", "Set writebatch key-value pair done.");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+
+    return;
 }
 
 static void
 URI_rpc_writebatch_del_cb(evhttpx_request_t *req, void *userdata)
 {
+    /* json formatted response. */
+    unsigned int code = 0;
+    const char *key = NULL;
+    const char *batch_id = NULL;
+    bool is_quiet = false;
+    char *response = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &key, "key", "Please specify which key to set.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    _rpc_query_batch_check(req, &batch_id);
+    if ((batch_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Batch ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_writebatch_t *batch =
+        xleveldb_search_writebatch(&dbwritebatch, batch_id);
+    if (batch == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Batch not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+
+    leveldb_writebatch_delete(
+            batch->writebatch,
+            key, strlen(key));
+    
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                "OK", "Delete writebatch key-value pair done.");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+
+    return;
 }
 
 static void
@@ -3966,7 +4093,7 @@ URI_rpc_writebatch_destroy_cb(evhttpx_request_t *req, void *userdata)
     unsigned int code = 0;
     bool is_quiet = false;
     char *response = NULL;
-    const char *writebatch_id = NULL;
+    const char *batch_id = NULL;
     
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
@@ -3976,25 +4103,25 @@ URI_rpc_writebatch_destroy_cb(evhttpx_request_t *req, void *userdata)
 
     is_quiet = _rpc_query_quiet_check(req);
 
-    _rpc_query_iter_check(req, &writebatch_id);
-    if ((writebatch_id == NULL)) {
+    _rpc_query_iter_check(req, &batch_id);
+    if ((batch_id == NULL)) {
         response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
                 "Bad Request", "Writebatch ID must be specified.");
         _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
     }
 
-    xleveldb_writebatch_t *writebatch=
-        xleveldb_search_writebatch(&dbwritebatch, writebatch_id);
-    if (writebatch_id == NULL) {
+    xleveldb_writebatch_t *batch=
+        xleveldb_search_writebatch(&dbwritebatch, batch_id);
+    if (batch == NULL) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
                 "Not Found", "Writebatch not found, please check.");
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
 
-    xleveldb_free_writebatch(writebatch);
-    rb_erase(&(writebatch->node), &dbwritebatch);
+    xleveldb_free_writebatch(batch);
+    rb_erase(&(batch->node), &dbwritebatch);
     if (is_quiet == false) {
         response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK, "OK",
                 "Writebatch destroyed");
