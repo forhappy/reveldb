@@ -3905,8 +3905,8 @@ URI_rpc_snapshot_release_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
     }
+
     _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
-    
     return;
 }
 
@@ -3951,8 +3951,8 @@ URI_rpc_writebatch_new_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response_on_iter(uuid_str);
     }
-    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
 
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK); 
     return;
 }
 
@@ -4018,8 +4018,8 @@ URI_rpc_writebatch_put_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
     }
-        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
 
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
@@ -4065,7 +4065,6 @@ URI_rpc_writebatch_del_cb(evhttpx_request_t *req, void *userdata)
         return;
     }
 
-
     leveldb_writebatch_delete(
             batch->writebatch,
             key, strlen(key));
@@ -4076,14 +4075,130 @@ URI_rpc_writebatch_del_cb(evhttpx_request_t *req, void *userdata)
     } else {
         response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
     }
-        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
 
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
 static void
 URI_rpc_writebatch_clear_cb(evhttpx_request_t *req, void *userdata)
 {
+    /* json formatted response. */
+    unsigned int code = 0;
+    const char *batch_id = NULL;
+    bool is_quiet = false;
+    char *response = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_batch_check(req, &batch_id);
+    if ((batch_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Batch ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_writebatch_t *batch =
+        xleveldb_search_writebatch(&dbwritebatch, batch_id);
+    if (batch == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Batch not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    leveldb_writebatch_clear(batch->writebatch);
+    
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                "OK", "Clear writebatch done.");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+    
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+    return;
+}
+
+static void
+URI_rpc_writebatch_commit_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    const char *dbname = NULL;
+    const char *batch_id = NULL;
+    bool is_quiet = false;
+    char *response = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+    
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    _rpc_query_batch_check(req, &batch_id);
+    if ((batch_id == NULL)) {
+        response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                "Bad Request", "Batch ID must be specified.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    xleveldb_writebatch_t *batch =
+        xleveldb_search_writebatch(&dbwritebatch, batch_id);
+    if (batch == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Batch not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    leveldb_write(
+            db->instance->db,
+            db->instance->woptions,
+            batch->writebatch,
+            &(db->instance->err));
+    if (db->instance->err != NULL) {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_SERVERR, "Internal Server Error", db->instance->err);
+        } else {
+             response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                     "Internal Server Error", db->instance->err);
+        }
+        xleveldb_reset_err(db->instance);
+        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR);
+    } else {
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                    "OK", "Writebatch done.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+    }
+
+    return;
 }
 
 static void
@@ -4443,6 +4558,7 @@ reveldb_rpc_init(reveldb_config_t *config)
     callbacks->rpc_writebatch_put_cb     = evhttpx_set_cb(rpc->httpx, "/rpc/batch/put", URI_rpc_writebatch_put_cb, NULL);
     callbacks->rpc_writebatch_delete_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/batch/del", URI_rpc_writebatch_del_cb, NULL);
     callbacks->rpc_writebatch_clear_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/batch/clear", URI_rpc_writebatch_clear_cb, NULL);
+    callbacks->rpc_writebatch_commit_cb  = evhttpx_set_cb(rpc->httpx, "/rpc/batch/commit", URI_rpc_writebatch_commit_cb, NULL);
     callbacks->rpc_writebatch_destroy_cb = evhttpx_set_cb(rpc->httpx, "/rpc/batch/destroy", URI_rpc_writebatch_destroy_cb, NULL);
 
     /* miscs operations. */
@@ -4564,6 +4680,13 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
     evhttpx_callback_free(rpc->callbacks->rpc_snapshot_new_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_snapshot_release_cb);
     
+    evhttpx_callback_free(rpc->callbacks->rpc_writebatch_new_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_writebatch_put_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_writebatch_delete_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_writebatch_clear_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_writebatch_commit_cb);
+    evhttpx_callback_free(rpc->callbacks->rpc_writebatch_destroy_cb);
+
     evhttpx_callback_free(rpc->callbacks->rpc_sync_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_check_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_exists_cb);
