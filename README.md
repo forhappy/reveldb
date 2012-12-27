@@ -166,7 +166,7 @@ Stats RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Reveldb report the following information.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -194,7 +194,7 @@ Stats RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Reveldb statistics.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -208,9 +208,9 @@ Stats RPCs
 - input: nfal(num-files-at-levelN, optional): the number of files at level N,
 where N is an ASCII representation of a level number(e.g. "0").
 
-- input: stats(optional): statistics about internal operatoins of the DB.
+- input: leveldb.stats(optional): statistics about internal operatoins of the DB.
 
-- input: sst(optional): describes all of the sstables that make up the db contents.
+- input: leveldb.sst(optional): describes all of the sstables that make up the db contents.
 
 - output: miscellaneous properties of the specified database according to the input.
 
@@ -218,18 +218,19 @@ where N is an ASCII representation of a level number(e.g. "0").
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/property
+        http://127.0.0.1:8088/rpc/property?db=default&property=leveldb.stats
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Get key-value pair done.",
+            "date": "Thu, 27 Dec 2012 08:57:20 GMT",
+            "kv": {
+                "property": "                               Compactions\nLevel  Files Size(MB) Time(sec) Read(MB) Write(MB)\n--------------------------------------------------\n  0        1        0         0        0         0\n"
+            }
         }
-
-
 
 Admin RPCs
 -----------
@@ -239,10 +240,6 @@ Admin RPCs
 - Description: 
 
 - input: db: the database identifier.
-
-- input: 
-
-- output: 
 
 - status code: 200.
 
@@ -255,10 +252,9 @@ Admin RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Created new leveldb instance OK.",
+            "date": "Thu, 27 Dec 2012 08:59:14 GMT"
         }
-
 
 **/rpc/compact**
 
@@ -266,25 +262,24 @@ Admin RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: start(optional): start key from which to do compaction
 
-- output: 
+- input: end(optional): end key to which the compaction will stop.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/compact
+        http://127.0.0.1:8088/rpc/compact?db=default&start=hi
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Range compaction done.",
+            "date": "Thu, 27 Dec 2012 09:01:14 GMT"
         }
-
 
 **/rpc/size**
 
@@ -300,27 +295,25 @@ Admin RPCs
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/size
+        http://127.0.0.1:8088/rpc/size?start=hi&limit=hello
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Get leveldb storage engine version.",
+            "date": "Thu, 27 Dec 2012 09:07:45 GMT",
+            "start": "hi",
+            "limit": "hello",
+            "size": 12324
         }
-
 
 **/rpc/repair**
 
 - Description: 
 
 - input: db: the database identifier.
-
-- input: 
-
-- output: 
 
 - status code: 200.
 
@@ -333,10 +326,9 @@ Admin RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Repair db done.",
+            "date": "Thu, 27 Dec 2012 09:06:30 GMT"
         }
-
 
 **/rpc/destroy**
 
@@ -344,22 +336,18 @@ Admin RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
-
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/destroy
+        http://127.0.0.1:8088/rpc/destroy?db=hello
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Destroy db done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -374,25 +362,24 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to be added.
 
-- output: 
+- input: value: value along with the key to be added.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/add
+        http://127.0.0.1:8088/rpc/add?db=hello&key=hello&value=world
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Set key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:11:26 GMT"
         }
-
 
 **/rpc/set**
 
@@ -400,25 +387,24 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to be added.
 
-- output: 
+- input: value: value along with the key to be added.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/set
+        http://127.0.0.1:8088/rpc/set?db=hello&key=hello&value=world
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Set key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:11:26 GMT"
         }
-
 
 **/rpc/mset**
 
@@ -427,8 +413,6 @@ CRUD RPCs
 - input: db: the database identifier.
 
 - input: 
-
-- output: 
 
 - status code: 200.
 
@@ -441,7 +425,7 @@ CRUD RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Reveldb mset done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -452,25 +436,24 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to be appended string.
 
-- output: 
+- input: value: value string which will appended to the old value. 
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/append
+        http://127.0.0.1:8088/rpc/append?db=hello&key=hi&value=world
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Append value done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
-
 
 **/rpc/prepend**
 
@@ -478,25 +461,24 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to be prepended string.
 
-- output: 
+- input: value: value string which will prepended to the old value. 
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/prepend
+        http://127.0.0.1:8088/rpc/prepend?db=hello&key=hi&value=world
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Prepend value done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
-
 
 **/rpc/insert**
 
@@ -504,25 +486,26 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to be inserted string.
 
-- output: 
+- input: value: value string which will inserted to the old value. 
+
+- input: pos: insertion position. 
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/insert
+        http://127.0.0.1:8088/rpc/insert?db=hello&key=hi&value=world
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Insert value done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
-
 
 **/rpc/get**
 
@@ -530,25 +513,24 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
+- input: key: which key to get.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/get
+        http://127.0.0.1:8088/rpc/get&db=hello&key=hello
 
 - sample response:
-
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
-        }
-
+            "message": "Get key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:19:05 GMT",
+            "kv": {
+                "hello": "worldworld"
+            }
+        }        
 
 **/rpc/mget**
 
@@ -557,8 +539,6 @@ CRUD RPCs
 - input: db: the database identifier.
 
 - input: 
-
-- output: 
 
 - status code: 200.
 
@@ -571,7 +551,7 @@ CRUD RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Multiple get done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -582,25 +562,25 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
+- input: key: which key to seize.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/seize
+        http://127.0.0.1:8088/rpc/seize?db=default&key=hello
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Seize key value pair OK, but note that you have just deleted the pair on reveldb server",
+            "date": "Thu, 27 Dec 2012 09:21:11 GMT",
+            "kv": {
+                "hello": "worldworld"
+            }
         }
-
 
 **/rpc/mseize**
 
@@ -609,8 +589,6 @@ CRUD RPCs
 - input: db: the database identifier.
 
 - input: 
-
-- output: 
 
 - status code: 200.
 
@@ -623,7 +601,7 @@ CRUD RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Multiple seize done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -653,32 +631,92 @@ CRUD RPCs
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
-
 **/rpc/regex**
 
 - Description: 
 
 - input: db: the database identifier.
 
-- input: 
+- input: kregex: key regex.
 
-- output: 
+- input: vregex: value regex.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/regex
+        http://127.0.0.1:8088/rpc/regex?kregex=h\*&vregex=w\* 
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
-        }
+            "message": "Get key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:23:41 GMT",
+            "kvs": [
+                {
+                    "hi": "10"
+                }
+            ]
+        }       
 
+**/rpc/kregex**
+
+- Description: 
+
+- input: db: the database identifier.
+
+- input: pattern: key regex pattern.
+
+- status code: 200.
+
+- sample request:
+
+        http://127.0.0.1:8088/rpc/kregex?pattern=h\*
+
+- sample response:
+
+        {
+            "code": 200,
+            "status": "OK",
+            "message": "Get key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:23:41 GMT",
+            "kvs": [
+                {
+                    "hi": "10"
+                }
+            ]
+        }       
+
+
+**/rpc/vregex**
+
+- Description: 
+
+- input: db: the database identifier.
+
+- input: pattern: value regex pattern.
+
+- status code: 200.
+
+- sample request:
+
+        http://127.0.0.1:8088/rpc/vregex?pattern=w\* 
+
+- sample response:
+
+        {
+            "code": 200,
+            "status": "OK",
+            "message": "Get key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:23:41 GMT",
+            "kvs": [
+                {
+                    "hi": "10"
+                }
+            ]
+        }       
 
 **/rpc/incr**
 
@@ -686,25 +724,24 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to incr.
 
-- output: 
+- input: step: how long step to incr.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/incr
+        http://127.0.0.1:8088/rpc/incr?key=hi&step=10
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Incr value done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
-
 
 **/rpc/decr**
 
@@ -712,22 +749,22 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to decr.
 
-- output: 
+- input: step: how long step to decr.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/decr
+        http://127.0.0.1:8088/rpc/decr?key=hi&step=10
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Decr value done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -738,23 +775,28 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to compare.
 
-- output: 
+- input: oval: old value to be compared.
+
+- input: nval: new value to be set.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/cas
+        http://127.0.0.1:8088/rpc/cas?key=hi&oval=10&nval=200
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Get key-value pair done.",
+            "date": "Thu, 27 Dec 2012 09:31:47 GMT",
+            "kv": {
+                "hi": "20"
+            }
         }
 
 
@@ -764,22 +806,22 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
+- input: key: key to be replaced.
 
-- output: 
+- input: value: replaced value. 
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/replace
+        http://127.0.0.1:8088/rpc/replace?key=hi&value=world
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Replace value done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -790,22 +832,20 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
+- input: key: key to be deleted.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/del
+        http://127.0.0.1:8088/rpc/del?key=hi
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Delete key done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -818,8 +858,6 @@ CRUD RPCs
 
 - input: 
 
-- output: 
-
 - status code: 200.
 
 - sample request:
@@ -831,7 +869,7 @@ CRUD RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Multiple delete done.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -842,22 +880,20 @@ CRUD RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
+- input: key: key to be removed.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/remove
+        http://127.0.0.1:8088/rpc/remove?key=hi
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Key removed.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -867,10 +903,6 @@ CRUD RPCs
 - Description: 
 
 - input: db: the database identifier.
-
-- input: 
-
-- output: 
 
 - status code: 200.
 
@@ -883,7 +915,7 @@ CRUD RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Clear all keys",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -924,22 +956,20 @@ Miscs RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
+- input: key: key to check.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/check
+        http://127.0.0.1:8088/rpc/check?key=hi
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Key exists",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -950,22 +980,20 @@ Miscs RPCs
 
 - input: db: the database identifier.
 
-- input: 
-
-- output: 
+- input: key: Key to check.
 
 - status code: 200.
 
 - sample request:
 
-        http://127.0.0.1:8088/rpc/exists
+        http://127.0.0.1:8088/rpc/exists?key=hi
 
 - sample response:
 
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
+            "message": "Key exists.",
             "date": "Mon, 17 Dec 2012 12:50:22 GMT",
         }
 
@@ -973,12 +1001,6 @@ Miscs RPCs
 **/rpc/version**
 
 - Description: 
-
-- input: db: the database identifier.
-
-- input: 
-
-- output: 
 
 - status code: 200.
 
@@ -991,8 +1013,10 @@ Miscs RPCs
         {
             "code": 200,
             "status": "OK",
-            "message": "Reveldb echoed the HTTP headers and query arguments of your request.",
-            "date": "Mon, 17 Dec 2012 12:50:22 GMT",
+            "message": "Get leveldb storage engine version.",
+            "date": "Thu, 27 Dec 2012 09:38:05 GMT",
+            "major": 1,
+            "minor": 7
         }
 
 License

@@ -2822,7 +2822,7 @@ URI_rpc_cas_cb(evhttpx_request_t *req, void *userdata)
     }
 
     response = _rpc_query_param_sanity_check(req,
-            &key, "nval", "Please specify new value to swap.");
+            &nval, "nval", "Please specify new value to swap.");
     if (response != NULL) {
         _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
         return;
