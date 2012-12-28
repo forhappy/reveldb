@@ -1665,7 +1665,6 @@ URI_rpc_insert_cb(evhttpx_request_t *req, void *userdata)
     return;
 }
 
-
 static void
 URI_rpc_get_cb(evhttpx_request_t *req, void *userdata)
 {
@@ -3158,27 +3157,27 @@ URI_rpc_remove_cb(evhttpx_request_t *req, void *userdata)
 {
     /* json formatted response. */
     unsigned int code = 0;
-    char *response = NULL;
-    const char *key = NULL;
-    const char *dbname = NULL;
     bool is_quiet = false;
-    
+    char *response = NULL;
+    const char *start_key = NULL;
+    const char *end_key = NULL;
+    bool has_end_key = false;
+    const char *dbname = NULL;
+    leveldb_iterator_t* iter = NULL;
+    evhttpx_query_t *query = req->uri->query;
+
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
         _rpc_send_reply(req, response, code);
         return;
     }
-    
+
     is_quiet = _rpc_query_quiet_check(req);
 
-    response = _rpc_query_param_sanity_check(req,
-            &key, "key", "You have to specify which key to delete.");
-    if (response != NULL) {
-        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
-        return;
-    }
- 
-    _rpc_query_database_check(req, &dbname);
+    start_key = evhttpx_kv_find(query, "start");
+    end_key = evhttpx_kv_find(query, "end");
+    dbname = evhttpx_kv_find(query, "db");
+
     if ((dbname == NULL)) dbname =
         reveldb_config->db_config->dbname;
     reveldb_t *db = reveldb_search_db(&reveldb, dbname);
@@ -3188,35 +3187,46 @@ URI_rpc_remove_cb(evhttpx_request_t *req, void *userdata)
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
         return;
     }
-
-    leveldb_delete(
-            db->instance->db,
-            db->instance->woptions,
-            key, strlen(key),
-            &(db->instance->err));
-    if (db->instance->err != NULL) {
-        if (is_quiet == false ) {
-        response = _rpc_jsonfy_response_on_error(req,
-                EVHTTPX_RES_SERVERR, 
-                "Internal Server Error",
-                db->instance->err);
-        } else {
-            response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR, 
-                "Internal Server Error",
-                db->instance->err);
-        }
-        xleveldb_reset_err(db->instance);
-        _rpc_send_reply(req, response, EVHTTPX_RES_SERVERR);
+   
+    iter = leveldb_create_iterator(db->instance->db,
+            db->instance->roptions);
+    if (start_key == NULL) {
+        leveldb_iter_seek_to_first(iter);
+        assert(leveldb_iter_valid(iter));
     } else {
-        if (is_quiet == false) {
-            response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOCONTENT,
-                    "No Content", "Delete key done.");
-        } else {
-            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_NOCONTENT);
-        }
-        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+        leveldb_iter_seek(iter, start_key, strlen(start_key));
+        assert(leveldb_iter_valid(iter));
     }
 
+    if (end_key != NULL) has_end_key = true;
+
+    while(true) {
+        if (!leveldb_iter_valid(iter)) break;
+        size_t key_len = -1;
+        const char *key = leveldb_iter_key(iter, &key_len);
+        if ((has_end_key == true)
+                && (strlen(end_key) == key_len)
+                && (strncmp(key, end_key, key_len) == 0)) break;
+        leveldb_delete(
+                db->instance->db,
+                db->instance->woptions,
+                key, key_len,
+                &(db->instance->err));
+        if (db->instance->err != NULL) {
+            xleveldb_reset_err(db->instance);
+        }
+        leveldb_iter_next(iter);
+    }
+    leveldb_iter_destroy(iter);
+
+    if (is_quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOCONTENT,
+                "No Content", "Range remove done.");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_NOCONTENT);
+    }
+
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
 
