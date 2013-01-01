@@ -909,7 +909,7 @@ _rpc_do_mset(evhttpx_request_t *req, reveldb_t *db, bool quiet)
         }
         for (arridx = 0; arridx < items; arridx++) {
             char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
-            char *value = cJSON_GetArrayItem(keys, arridx)->valuestring;
+            char *value = cJSON_GetArrayItem(values, arridx)->valuestring;
             leveldb_put(
                     db->instance->db,
                     db->instance->woptions,
