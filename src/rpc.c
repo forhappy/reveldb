@@ -732,7 +732,65 @@ _rpc_pattern_unescape(const char *pattern)
 static char *
 _rpc_do_mget(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 {
-    return NULL;
+   assert(req != NULL);
+    cJSON *root = NULL;
+    cJSON *keys = NULL;
+    char *response = NULL;
+    int items = 0;
+    int arridx = -1;
+    size_t value_len = -1;
+    evhttpx_kvs_t *kvs = evhttpx_kvs_new();
+
+    /* buffer containing data from client */
+    evbuf_t *buffer_in = req->buffer_in;
+    size_t buffer_in_size = -1;
+    char *inbuffer =
+        evbuffer_readln(buffer_in, &buffer_in_size, EVBUFFER_EOL_CRLF);
+
+    root = cJSON_Parse(inbuffer);
+    if (!root) {
+        if (quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid post filed format.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+        }
+        return response;
+    }
+
+    keys = cJSON_GetObjectItem(root, "keys");
+    if (keys != NULL) {
+        for (arridx = 0; arridx < items; arridx++) {
+            char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
+            char *value = leveldb_get(
+                    db->instance->db,
+                    db->instance->roptions,
+                    key, strlen(key),
+                    &value_len,
+                    &(db->instance->err));
+            if (value != NULL) {
+                evhttpx_kv_t *kv =
+                    evhttpx_kvlen_new(key, strlen(key), value, value_len, 1, 1);
+                evhttpx_kvs_add_kv(kvs, kv);
+                leveldb_free(value);
+            }
+        }
+    } else {
+        if (quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid post filed format.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+        }
+        return response;
+    }
+
+    if (quiet == false) {
+        response = _rpc_jsonfy_response_on_kvs(kvs);
+    } else {
+        response = _rpc_jsonfy_quiet_response_on_kvs(kvs);
+    }
+    return response;
 }
 
 static char *
