@@ -820,13 +820,73 @@ _rpc_do_mset(evhttpx_request_t *req, reveldb_t *db, bool quiet)
         response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
     }
     return response;
-
 }
 
 static char *
 _rpc_do_mdel(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 {
-    return NULL;
+    assert(req != NULL);
+    cJSON *root = NULL;
+    cJSON *keys = NULL;
+    char *response = NULL;
+    int items = 0;
+    int arridx = -1;
+
+    /* buffer containing data from client */
+    evbuf_t *buffer_in = req->buffer_in;
+    size_t buffer_in_size = -1;
+    char *inbuffer =
+        evbuffer_readln(buffer_in, &buffer_in_size, EVBUFFER_EOL_CRLF);
+
+    root = cJSON_Parse(inbuffer);
+    if (!root) {
+        if (quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid post filed format.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+        }
+        return response;
+    }
+
+    keys = cJSON_GetObjectItem(root, "keys");
+    if (keys != NULL) {
+        for (arridx = 0; arridx < items; arridx++) {
+            char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
+            leveldb_delete(
+                    db->instance->db,
+                    db->instance->woptions,
+                    key, strlen(key),
+                    &(db->instance->err));
+            if (db->instance->err != NULL) {
+                if (quiet == false) {
+                    response = _rpc_jsonfy_response_on_error(req,
+                            EVHTTPX_RES_SERVERR, "Internal Server Error", db->instance->err);
+                } else {
+                    response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                            "Internal Server Error", db->instance->err);
+                }
+                xleveldb_reset_err(db->instance);
+                return response;
+            }
+        }
+    } else {
+        if (quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid post filed format.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+        }
+        return response;
+    }
+
+    if (quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                "OK", "Multiple set done.");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+    return response;
 }
 
 static void
