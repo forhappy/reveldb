@@ -732,7 +732,7 @@ _rpc_pattern_unescape(const char *pattern)
 static char *
 _rpc_do_mget(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 {
-   assert(req != NULL);
+    assert(req != NULL);
     cJSON *root = NULL;
     cJSON *keys = NULL;
     char *response = NULL;
@@ -796,7 +796,7 @@ _rpc_do_mget(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 static char *
 _rpc_do_mseize(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 {
-   assert(req != NULL);
+    assert(req != NULL);
     cJSON *root = NULL;
     cJSON *keys = NULL;
     char *response = NULL;
@@ -1666,7 +1666,103 @@ URI_rpc_mset_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_do_mset(req, db, is_quiet);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
-    free(response);
+    return;
+}
+
+static void
+URI_rpc_append_cb(evhttpx_request_t *req, void *userdata)
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    bool is_quiet = false;
+    char *value_old = NULL;
+    tstring_t *value_new = NULL;
+    char *response = NULL;
+    const char *key = NULL;
+    const char *value = NULL;
+    const char *dbname = NULL;
+    unsigned int value_old_len = 0;
+    
+    response = _rpc_proto_and_method_sanity_check(req, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    response = _rpc_query_param_sanity_check(req,
+            &key, "key", "Please specify which key to append.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+    
+    response = _rpc_query_param_sanity_check(req, &value, "value",
+            "Please set value along with the key you specified.");
+    if (response != NULL) {
+        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
+        return;
+    }
+
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+   
+    value_old = leveldb_get(
+            db->instance->db,
+            db->instance->roptions,
+            key, strlen(key),
+            &value_old_len,
+            &(db->instance->err));
+    if (value_old != NULL) {
+        value_new = tstring_new_len(value_old, value_old_len);
+        tstring_append_len(value_new, value, strlen(value));
+        leveldb_put(
+            db->instance->db,
+            db->instance->woptions,
+            key, strlen(key),
+            tstring_data(value_new), tstring_size(value_new),
+            &(db->instance->err));
+        if (db->instance->err != NULL) {
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_response_on_error(req,
+                        EVHTTPX_RES_SERVERR, "Internal Server Error",
+                        db->instance->err);
+            } else {
+                response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                        "Internal Server Error", db->instance->err);
+            }
+        } else {
+            if (is_quiet == false) {
+                response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                        "OK", "Append value done.");
+            } else {
+                response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+            }
+        } 
+        leveldb_free(value_old);
+        tstring_free(value_new);
+        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+    } else {
+
+        if (is_quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req,
+                    EVHTTPX_RES_NOTFOUND, "Not Found", "Key not found.");
+        } else {
+             response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                     "Not Found", "Key not found.");
+        }
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+    }
+
     return;
 }
 
@@ -2000,7 +2096,6 @@ URI_rpc_mget_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_do_mget(req, db, is_quiet);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
-    free(response);
     return;
 }
 
@@ -2122,7 +2217,6 @@ URI_rpc_mseize_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_do_mseize(req, db, is_quiet);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
-    free(response);
     return;
 }
 
@@ -3454,104 +3548,6 @@ URI_rpc_mdel_cb(evhttpx_request_t *req, void *userdata)
 
     response = _rpc_do_mdel(req, db, is_quiet);
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
-    free(response);
-    return;
-}
-
-static void
-URI_rpc_append_cb(evhttpx_request_t *req, void *userdata)
-{
-    /* json formatted response. */
-    unsigned int code = 0;
-    bool is_quiet = false;
-    char *value_old = NULL;
-    tstring_t *value_new = NULL;
-    char *response = NULL;
-    const char *key = NULL;
-    const char *value = NULL;
-    const char *dbname = NULL;
-    unsigned int value_old_len = 0;
-    
-    response = _rpc_proto_and_method_sanity_check(req, &code);
-    if (response != NULL) {
-        _rpc_send_reply(req, response, code);
-        return;
-    }
-
-    is_quiet = _rpc_query_quiet_check(req);
-
-    response = _rpc_query_param_sanity_check(req,
-            &key, "key", "Please specify which key to append.");
-    if (response != NULL) {
-        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
-        return;
-    }
-    
-    response = _rpc_query_param_sanity_check(req, &value, "value",
-            "Please set value along with the key you specified.");
-    if (response != NULL) {
-        _rpc_send_reply(req, response, EVHTTPX_RES_BADREQ);
-        return;
-    }
-
-    _rpc_query_database_check(req, &dbname);
-    if ((dbname == NULL)) dbname =
-        reveldb_config->db_config->dbname;
-    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
-    if (db == NULL) {
-        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
-                "Not Found", "Database not found, please check.");
-        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
-        return;
-    }
-   
-    value_old = leveldb_get(
-            db->instance->db,
-            db->instance->roptions,
-            key, strlen(key),
-            &value_old_len,
-            &(db->instance->err));
-    if (value_old != NULL) {
-        value_new = tstring_new_len(value_old, value_old_len);
-        tstring_append_len(value_new, value, strlen(value));
-        leveldb_put(
-            db->instance->db,
-            db->instance->woptions,
-            key, strlen(key),
-            tstring_data(value_new), tstring_size(value_new),
-            &(db->instance->err));
-        if (db->instance->err != NULL) {
-            if (is_quiet == false) {
-                response = _rpc_jsonfy_response_on_error(req,
-                        EVHTTPX_RES_SERVERR, "Internal Server Error",
-                        db->instance->err);
-            } else {
-                response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
-                        "Internal Server Error", db->instance->err);
-            }
-        } else {
-            if (is_quiet == false) {
-                response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
-                        "OK", "Append value done.");
-            } else {
-                response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
-            }
-        } 
-        leveldb_free(value_old);
-        tstring_free(value_new);
-        _rpc_send_reply(req, response, EVHTTPX_RES_OK);
-    } else {
-
-        if (is_quiet == false) {
-            response = _rpc_jsonfy_response_on_error(req,
-                    EVHTTPX_RES_NOTFOUND, "Not Found", "Key not found.");
-        } else {
-             response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
-                     "Not Found", "Key not found.");
-        }
-        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
-    }
-
     return;
 }
 
@@ -5132,7 +5128,7 @@ reveldb_rpc_run(reveldb_rpc_t *rpc)
     if (rpc->config->server_config->https == true) {
         evhttpx_ssl_init(rpc->httpx, rpc->sslcfg);
     }
-    evhttpx_use_threads(rpc->httpx, NULL, 4, NULL);
+    // evhttpx_use_threads(rpc->httpx, NULL, 4, NULL);
     for (i = 0; i < rpc->num_ports; i++) {
         evhttpx_bind_socket(rpc->httpx,
                 config->server_config->host,
