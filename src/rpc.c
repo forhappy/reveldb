@@ -760,6 +760,7 @@ _rpc_do_mget(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 
     keys = cJSON_GetObjectItem(root, "keys");
     if (keys != NULL) {
+        items = cJSON_GetArraySize(keys);
         for (arridx = 0; arridx < items; arridx++) {
             char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
             char *value = leveldb_get(
@@ -824,6 +825,7 @@ _rpc_do_mseize(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 
     keys = cJSON_GetObjectItem(root, "keys");
     if (keys != NULL) {
+        items = cJSON_GetArraySize(keys);
         for (arridx = 0; arridx < items; arridx++) {
             char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
             char *value = leveldb_get(
@@ -974,6 +976,7 @@ _rpc_do_mdel(evhttpx_request_t *req, reveldb_t *db, bool quiet)
 
     keys = cJSON_GetObjectItem(root, "keys");
     if (keys != NULL) {
+        items = cJSON_GetArraySize(keys);
         for (arridx = 0; arridx < items; arridx++) {
             char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
             leveldb_delete(
