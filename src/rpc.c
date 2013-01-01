@@ -587,8 +587,8 @@ _rpc_proto_and_method_sanity_check(
 
 static char *
 _rpc_proto_and_method_sanity_check2nd(
-        int expected, /**< expected method. */
         evhttpx_request_t *req,
+        int expected, /**< expected method. */
         unsigned int *code)
 {
     assert(req != NULL);
@@ -727,6 +727,106 @@ static char *
 _rpc_pattern_unescape(const char *pattern)
 {
     return safe_urldecode(pattern);
+}
+
+static char *
+_rpc_do_mget(evhttpx_request_t *req, reveldb_t *db, bool quiet)
+{
+    return NULL;
+}
+
+static char *
+_rpc_do_mseize(evhttpx_request_t *req, reveldb_t *db, bool quiet)
+{
+    return NULL;
+}
+
+static char *
+_rpc_do_mset(evhttpx_request_t *req, reveldb_t *db, bool quiet)
+{
+    assert(req != NULL);
+    cJSON *root = NULL;
+    cJSON *keys = NULL;
+    cJSON *values = NULL;
+    char *response = NULL;
+    int items = 0;
+    int arridx = -1;
+
+    /* buffer containing data from client */
+    evbuf_t *buffer_in = req->buffer_in;
+    size_t buffer_in_size = -1;
+    char *inbuffer =
+        evbuffer_readln(buffer_in, &buffer_in_size, EVBUFFER_EOL_CRLF);
+
+    root = cJSON_Parse(inbuffer);
+    if (!root) {
+        if (quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid post filed format.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+        }
+        return response;
+    }
+
+    keys = cJSON_GetObjectItem(root, "keys");
+    values = cJSON_GetObjectItem(root, "values");
+    if (keys != NULL && values != NULL) {
+        if ((items = cJSON_GetArraySize(keys)) != cJSON_GetArraySize(values)) {
+            if (quiet == false) {
+                response = _rpc_jsonfy_response_on_error(
+                        req, EVHTTPX_RES_BADREQ, "Bad Request",
+                        "Keys and values does not equal.");
+            } else {
+                response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+            }
+            return response;
+        }
+        for (arridx = 0; arridx < items; arridx++) {
+            char *key = cJSON_GetArrayItem(keys, arridx)->valuestring;
+            char *value = cJSON_GetArrayItem(keys, arridx)->valuestring;
+            leveldb_put(
+                    db->instance->db,
+                    db->instance->woptions,
+                    key, strlen(key),
+                    value, strlen(value),
+                    &(db->instance->err));
+            if (db->instance->err != NULL) {
+                if (quiet == false) {
+                    response = _rpc_jsonfy_response_on_error(req,
+                            EVHTTPX_RES_SERVERR, "Internal Server Error", db->instance->err);
+                } else {
+                    response = _rpc_jsonfy_general_response(EVHTTPX_RES_SERVERR,
+                            "Internal Server Error", db->instance->err);
+                }
+                xleveldb_reset_err(db->instance);
+                return response;
+            }
+        }
+    } else {
+        if (quiet == false) {
+            response = _rpc_jsonfy_response_on_error(req, EVHTTPX_RES_BADREQ,
+                    "Bad Request", "Invalid post filed format.");
+        } else {
+            response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_BADREQ);
+        }
+        return response;
+    }
+
+    if (quiet == false) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_OK,
+                "OK", "Multiple set done.");
+    } else {
+        response = _rpc_jsonfy_quiet_response(EVHTTPX_RES_OK);
+    }
+    return response;
+
+}
+
+static char *
+_rpc_do_mdel(evhttpx_request_t *req, reveldb_t *db, bool quiet)
+{
+    return NULL;
 }
 
 static void
@@ -1355,7 +1455,37 @@ URI_rpc_set_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_mset_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+    /* json formatted response. */
+    unsigned int code = 0;
+    const char *dbname = NULL;
+    bool is_quiet = false;
+    char *response = NULL;
+    
+    response = _rpc_proto_and_method_sanity_check2nd(req, http_method_POST, &code);
+    if (response != NULL) {
+        _rpc_send_reply(req, response, code);
+        return;
+    }
+
+    is_quiet = _rpc_query_quiet_check(req);
+
+    _rpc_query_database_check(req, &dbname);
+    if ((dbname == NULL)) dbname =
+        reveldb_config->db_config->dbname;
+    reveldb_t *db = reveldb_search_db(&reveldb, dbname);
+    if (db == NULL) {
+        response = _rpc_jsonfy_general_response(EVHTTPX_RES_NOTFOUND,
+                "Not Found", "Database not found, please check.");
+        _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
+        return;
+    }
+
+    response = _rpc_do_mset(req, db, is_quiet);
+    _rpc_send_reply(req, response, EVHTTPX_RES_OK);
+    free(response);
+    return;
+}
 
 static void
 URI_rpc_append_cb(evhttpx_request_t *req, void *userdata)
@@ -3150,7 +3280,8 @@ URI_rpc_del_cb(evhttpx_request_t *req, void *userdata)
 
 static void
 URI_rpc_mdel_cb(evhttpx_request_t *req, void *userdata)
-{}
+{
+}
 
 static void
 URI_rpc_remove_cb(evhttpx_request_t *req, void *userdata)
@@ -4719,7 +4850,6 @@ reveldb_rpc_init(reveldb_config_t *config)
     return rpc;
 }
 
-
 void
 reveldb_rpc_run(reveldb_rpc_t *rpc)
 {
@@ -4730,6 +4860,7 @@ reveldb_rpc_run(reveldb_rpc_t *rpc)
     if (rpc->config->server_config->https == true) {
         evhttpx_ssl_init(rpc->httpx, rpc->sslcfg);
     }
+    evhttpx_use_threads(rpc->httpx, NULL, 4, NULL);
     for (i = 0; i < rpc->num_ports; i++) {
         evhttpx_bind_socket(rpc->httpx,
                 config->server_config->host,
