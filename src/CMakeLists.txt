@@ -14,6 +14,7 @@ SET(REVELDB_SRC
     xconfig.c
     log.c
     rpc.c
+    rest.c
     iter.c
     snapshot.c
     writebatch.c
