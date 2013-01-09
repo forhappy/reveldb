@@ -4,7 +4,7 @@
         "rpcports": "8087, 8088",
         "restports": "8089, 9000",
         "backlog": 1024,
-        "https": true,
+        "https": false,
         "username": "root",
         "password": "root",
         "datadir": "/tmp/reveldb/",
