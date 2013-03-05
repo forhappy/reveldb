@@ -12,6 +12,7 @@
 *.dylib
 
 # Executables
+reveldb
 *.exe
 *.out
 *.app
@@ -23,6 +24,9 @@ CMakeCache.txt
 build/CMakeFiles/
 build/compat/
 build/src/
+
+# LOG
+*.log
 
 # Vim swapfiles
 *.swp
