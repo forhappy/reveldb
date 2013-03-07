@@ -1,0 +1,49 @@
+{
+    /* reveldb server config. */
+    "server": {
+        "host": "0.0.0.0",  //server host.
+        "rpcports": "8087, 8088",  //rpc server port to bind on.
+        "restports": "8089, 9000",  //rest server port to bind on.
+        "backlog": 1024,  //backlog.
+        /**
+         * enable https, if https is false,
+         * then reveldb will use http protocol.
+         **/
+        "https": true,  
+        "username": "root",  //reveldb username.
+        "password": "root",  //reveldb password.
+        "datadir": "/tmp/reveldb/",  //datadir.
+        "pidfile": "/tmp/reveldb/reveldb.pid"  //pid file.
+    },
+    /* reveldb engine config. */
+    "engine": {
+        "dbname": "default",
+        "lru_cache_size": 65535,
+        "create_if_missing": true,
+        "error_if_exist": false,
+        "write_buffer_size": 65535,
+        "paranoid_checks": true,
+        "max_open_files": 1024,
+        "block_size": 65535,
+        "block_restart_interval": 16,
+        "compression": false,
+        "verify_checksums": false,
+        "fill_cache": false,
+        "sync": false
+    },
+    /* reveldb logger config. */
+    "logger": {
+        "level":"DEBUG",  //log level.
+        "stream": "logs/reveldb.log"  //log stream.
+    },
+    /* reveldb ssl config. */
+    "ssl": {
+        "key": "conf/ssl/reveldb.pem",
+        "cert": "conf/ssl/reveldb.crt",
+        "capath": "conf/ssl/",
+        "ciphers": "RC4+RSA:HIGH:+MEDIUM:+LOW",
+        "ssl_ctx_timeout": 3600,
+        "verify_peer": true,
+        "verify_depth": 42
+    }
+}

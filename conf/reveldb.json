@@ -10,7 +10,7 @@
         "datadir": "/tmp/reveldb/",
         "pidfile": "/tmp/reveldb/reveldb.pid"
     },
-    "db": {
+    "engine": {
         "dbname": "default",
         "lru_cache_size": 65535,
         "create_if_missing": true,
@@ -25,7 +25,7 @@
         "fill_cache": false,
         "sync": false
     },
-    "log": {
+    "logger": {
         "level":"DEBUG",
         "stream": "logs/reveldb.log"
     },

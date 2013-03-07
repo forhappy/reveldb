@@ -268,7 +268,7 @@ _xconfig_init_internal_config(const char *config)
         strncpy(server_config->pidfile, iter->valuestring, config_vlen);
         config_vlen = -1;
 
-        db = cJSON_GetObjectItem(root, "db");
+        db = cJSON_GetObjectItem(root, "engine");
 
         iter = cJSON_GetObjectItem(db, "dbname");
         config_vlen = strlen(iter->valuestring);
@@ -315,7 +315,7 @@ _xconfig_init_internal_config(const char *config)
         iter = cJSON_GetObjectItem(db, "sync");
         db_config->sync = (iter->valueint == 1) ? true : false;
 
-        log = cJSON_GetObjectItem(root, "log");
+        log = cJSON_GetObjectItem(root, "logger");
 
         iter = cJSON_GetObjectItem(log, "level");
         config_vlen = strlen(iter->valuestring);
