@@ -27,6 +27,70 @@
 #include "log.h"
 
 static char *
+_xconfig_strip_comment(const char *src, size_t len)
+{
+    int i = 0, j = 0;
+    bool quote = false, comment = false;
+    if (src == NULL) return "";
+
+    /* make a plenty of space. */
+    char *out = (char *)malloc(sizeof(char) * (len + 1));
+    if (out == NULL) {
+        fprintf(stderr, "out of memory in \n");
+        exit(EXIT_FAILURE);
+    }
+    memset(out, 0, sizeof(char) * (len + 1));
+    char *pout = out;
+
+    for (; i < len; i++) {
+        switch(src[i]) {
+            case '\\':
+                if (comment == true) break;
+                *(pout + j++) = src[i];
+                *(pout + j++) = src[++i];
+                break;
+            case '\'':
+            case '\"':
+                if (comment == true) break;
+                *(pout + j++) = src[i];
+                if (!quote) {
+                    quote = src[i];
+                } else if (quote == src[i]) {
+                    quote = 0;
+                }
+                break;
+            case '/':
+                if (quote) {
+                    *(pout + j++) = src[i];
+                } else if (src[i + 1] == '/') {
+                    i += strchr(src + i + 1, '\n') - (src + i);
+                } else if (src[i + 1] == '*') {
+                    comment = true;
+                    i++;
+                } else if (!comment) {
+                    *(pout + j++) = src[i];
+                }
+                break;
+            case '*':
+                if (quote) {
+                    *(pout + j++) = src[i];
+                } else if (comment && src[i + 1] == '/') {
+                    comment = false;
+                    i++;
+                    break;
+                } else if (comment) break;
+                *(pout + j++) = src[i];
+                break;
+            default:
+                if (!comment)
+                    *(pout + j++) = src[i];
+                break;
+        }
+    }
+    return out;
+}
+
+static char *
 _xconfig_load_config_body(const char *filename)
 {
     assert(filename != NULL);
@@ -65,8 +129,10 @@ _xconfig_load_config_body(const char *filename)
         return NULL;
     }
 
+    char *striped = _xconfig_strip_comment(json_buf, strlen(json_buf));
+    free(json_buf);
     fclose(fp);
-    return json_buf;
+    return striped;
 }
 
 static reveldb_config_t *
