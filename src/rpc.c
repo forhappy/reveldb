@@ -4799,7 +4799,7 @@ URI_rpc_check_cb(evhttpx_request_t *req, void *userdata)
     leveldb_readoptions_t *roptions = NULL;
 
     unsigned int value_len = 0;
-    
+
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
         _rpc_send_reply(req, response, code);
@@ -4863,7 +4863,7 @@ URI_rpc_check_cb(evhttpx_request_t *req, void *userdata)
         }
         _rpc_send_reply(req, response, EVHTTPX_RES_NOTFOUND);
     }
-    
+
     if (snapshot != NULL) {
         leveldb_readoptions_set_snapshot(roptions, NULL);
         leveldb_readoptions_destroy(roptions);
@@ -4887,7 +4887,7 @@ URI_rpc_exists_cb(evhttpx_request_t *req, void *userdata)
     leveldb_readoptions_t *roptions = NULL;
 
     unsigned int value_len = 0;
-    
+
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
         _rpc_send_reply(req, response, code);
@@ -4965,7 +4965,7 @@ URI_rpc_version_cb(evhttpx_request_t *req, void *userdata)
     unsigned int code = 0;
     bool is_quiet = false;
     char *response = NULL;
-    
+
     response = _rpc_proto_and_method_sanity_check(req, &code);
     if (response != NULL) {
         _rpc_send_reply(req, response, code);
@@ -4973,10 +4973,10 @@ URI_rpc_version_cb(evhttpx_request_t *req, void *userdata)
     }
 
     is_quiet = _rpc_query_quiet_check(req);
-    
+
     response = _rpc_jsonfy_version_response(leveldb_major_version(),
             leveldb_minor_version(), is_quiet);
-    
+
     _rpc_send_reply(req, response, EVHTTPX_RES_OK);
     return;
 }
@@ -5001,7 +5001,7 @@ reveldb_rpc_init(reveldb_config_t *config)
         free(rpc);
         return NULL;
     }
-    
+
     evhttpx_ssl_cfg_t *sslcfg = (evhttpx_ssl_cfg_t *)
         malloc(sizeof(evhttpx_ssl_cfg_t));
     if (sslcfg == NULL) {
@@ -5015,7 +5015,7 @@ reveldb_rpc_init(reveldb_config_t *config)
     callbacks->rpc_void_cb = evhttpx_set_cb(rpc->httpx, "/rpc/void", URI_rpc_void_cb, NULL);
     callbacks->rpc_echo_cb = evhttpx_set_cb(rpc->httpx, "/rpc/echo", URI_rpc_echo_cb, NULL);
     callbacks->rpc_head_cb = evhttpx_set_cb(rpc->httpx, "/rpc/head", URI_rpc_head_cb, NULL);
-    
+
     /* reveldb reports and internal leveldb storage engine status. */
     callbacks->rpc_report_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/report", URI_rpc_report_cb, NULL);
     callbacks->rpc_status_cb   = evhttpx_set_cb(rpc->httpx, "/rpc/status", URI_rpc_status_cb, NULL);
@@ -5207,7 +5207,7 @@ reveldb_rpc_stop(reveldb_rpc_t *rpc)
 
     evhttpx_callback_free(rpc->callbacks->rpc_snapshot_new_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_snapshot_release_cb);
-    
+
     evhttpx_callback_free(rpc->callbacks->rpc_writebatch_new_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_writebatch_put_cb);
     evhttpx_callback_free(rpc->callbacks->rpc_writebatch_delete_cb);
